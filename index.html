@@ -1,14 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-<meta name="theme-color" content="#f4f4f2"/>
-<title>Diet Logic Pro Ver1.1</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Diet Logic Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
@@ -27,14 +23,52 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!import
   .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
 }
 </style>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script type="text/babel">
-const{useState,useRef,useEffect}=React;
+const {useState, useRef, useEffect} = React;
+
+
+
+/* ═══ Inject global styles ═══ */
+const GLOBAL_CSS = `*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+#root{height:100%}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#f4f4f2}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+input[type=number]::-webkit-inner-spin-button{opacity:0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .35s ease forwards}
+.nb{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:3px;font-size:9px;padding:6px 12px;transition:color .15s}
+.nb:hover{color:#1a1a1a!important}
+@supports(padding:env(safe-area-inset-bottom)){
+  .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+}`;
+
+function injectGlobalStyles() {
+  if (typeof document === "undefined") return;
+  if (!document.getElementById("dlp-global-styles")) {
+    const style = document.createElement("style");
+    style.id = "dlp-global-styles";
+    style.textContent = GLOBAL_CSS;
+    document.head.appendChild(style);
+  }
+  if (!document.getElementById("dlp-google-fonts")) {
+    const link = document.createElement("link");
+    link.id = "dlp-google-fonts";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap";
+    document.head.appendChild(link);
+  }
+}
+
 
 /* ═══ localStorage helpers ═══ */
 const LS_KEY="dlp_state";
@@ -42,8 +76,8 @@ const loadLS=()=>{try{const s=localStorage.getItem(LS_KEY);return s?JSON.parse(s
 const saveLS=(obj)=>{try{localStorage.setItem(LS_KEY,JSON.stringify(obj));}catch(e){}};
 
 /* ═══ UTILITIES ═══ */
-const calcBMR=(w,h,a,s)=>s==="male"?10*w+6.25*h-5*a+5:10*w+6.25*h-5*a-161;
-const ACT={sedentary:{label:"座位中心",factor:1.2},light:{label:"軽度活動",factor:1.375},moderate:{label:"中程度",factor:1.55},active:{label:"高度活動",factor:1.725},veryActive:{label:"超高度",factor:1.9}};
+const calcBMR=(w,h,a,s)=>s==="male"?88.362+13.397*w+4.799*h-5.677*a:447.593+9.247*w+3.098*h-4.33*a;
+const ACT={sedentary:{label:"座位中心",factor:1.2},light:{label:"軽い運動（週1〜2回）",factor:1.375},moderate:{label:"中程度（週3〜5回）",factor:1.55},active:{label:"激しい運動（週6〜7回）",factor:1.725}};
 const calcTDEE=(bmr,act)=>bmr*(ACT[act]?.factor??1.55);
 const calcPFC=(tdee,goal,lean,pPct=30,fPct=25,custom="")=>{let cal=tdee;if(goal==="cut")cal=tdee-500;else if(goal==="bulk")cal=tdee+300;else if(goal==="custom"&&custom){const n=parseFloat(custom);if(!isNaN(n))cal=tdee+n;}const p=pPct?(cal*pPct)/100/4:lean?lean*2.2:(cal*0.3)/4;const f=fPct?(cal*fPct)/100/9:(cal*0.25)/9;const c=Math.max(0,(cal-p*4-f*9)/4);return{calories:Math.round(cal),protein:Math.round(p),fat:Math.round(f),carbs:Math.round(c)};};
 const calcBMI=(w,h)=>w/((h/100)**2);
@@ -58,10 +92,10 @@ const MOCK=[{date:"2026/01/26",weight:77.0,fat:22.5,hicarb:false},{date:"2026/01
 
 const ADVICE_MSGS={yellow:["⚠️ 体重が均衡しています。NEAT（非運動性活動熱産生）を意識しましょう。","⚠️ ペースが鈍化しています。塩分摂取による水分保持の可能性もありますが、PFCの再確認を推奨します。","⚠️ 2週連続で理想ペースを下回っています。食事ログの見直し、隠れカロリーを再チェックしてください。","⚠️ ペース鈍化が続いています。有酸素のボリュームを15〜20分追加する検討も有効です。","⚠️ 3週以上ペースが鈍化。2〜3日のリフィードを挟んで代謝をリセットしましょう。","⚠️ 長期停滞。ダイエットブレイク（1〜2週間メンテナンス）を実施し、ホルモンバランスの回復を推奨します。"],red:["🛑 理論値との乖離が拡大。5-10%のカロリー調整を検討してください。","🛑 代謝適応の可能性。リフィード（ハイカーボ）を入れて代謝に刺激を。","🛑 2週連続の警告。PFCバランスの再計算と食事記録の正確性を見直してください。","🛑 TDEEの活動レベル設定が実態と合っているか確認しましょう。","🛑 3週以上の警告。ダイエットブレイクを取り再開プランを検討してください。","🛑 深刻な停滞。専門家への相談を推奨します。"]};
 
-const EMPTY_MEALS=[{label:"起床後",labelEn:"WAKING UP",desc:"",p:"",f:"",c:""},{label:"朝ご飯",labelEn:"MORNING",desc:"",p:"",f:"",c:""},{label:"昼ご飯",labelEn:"LUNCH",desc:"",p:"",f:"",c:""},{label:"晩ご飯",labelEn:"DINNER",desc:"",p:"",f:"",c:""},{label:"トレーニング",labelEn:"WORKOUT",desc:"",p:"",f:"",c:""},{label:"就寝前",labelEn:"PRE-BED",desc:"",p:"",f:"",c:""},{label:"その他1",labelEn:"OTHER 1",desc:"",p:"",f:"",c:"",editable:true},{label:"その他2",labelEn:"OTHER 2",desc:"",p:"",f:"",c:"",editable:true},{label:"その他3",labelEn:"OTHER 3",desc:"",p:"",f:"",c:"",editable:true}];
+const EMPTY_MEALS=[{label:"起床後",labelEn:"WAKING UP",desc:"",p:"",f:"",c:""},{label:"朝ご飯",labelEn:"MORNING",desc:"",p:"",f:"",c:""},{label:"昼ご飯",labelEn:"LUNCH",desc:"",p:"",f:"",c:""},{label:"晩ご飯",labelEn:"DINNER",desc:"",p:"",f:"",c:""},{label:"トレーニング",labelEn:"WORKOUT",desc:"",p:"",f:"",c:""},{label:"就寝前",labelEn:"PRE-BED",desc:"",p:"",f:"",c:""},{label:"その他1",labelEn:"OTHER 1",desc:"",p:"",f:"",c:"",editable:true},{label:"その他2",labelEn:"OTHER 2",desc:"",p:"",f:"",c:"",editable:true}];
 
 /* ═══ COMPONENTS ═══ */
-function TrendChart({data,mode,onClickDate,goalLine,issnLine,showLines,showIssn=true,chartId="main"}){
+function TrendChart({data,mode,onClickDate,goalLine,issnLine,issnUpper,issnLower,showLines,showIssn=true,chartId="main"}){
   if(!data||!data.length)return(<div style={{height:180,display:"flex",alignItems:"center",justifyContent:"center",color:"#bbb",fontSize:11}}>データなし</div>);
   const label=mode==="weight"?"weight":"fat",unit=mode==="weight"?"kg":"%",step=mode==="weight"?1:0.5,lineColor=mode==="weight"?"#1a1a1a":"#5a7a5a";
   const scrollRef=useRef(null);
@@ -72,7 +106,7 @@ function TrendChart({data,mode,onClickDate,goalLine,issnLine,showLines,showIssn=
   const actualMin=Math.min(...nonNull),actualMax=Math.max(...nonNull);
   const actualCenter=(actualMin+actualMax)/2;
   let rangeMin=actualMin,rangeMax=actualMax;
-  if(showLines){const allLineVals=[];if(goalLine)goalLine.forEach(v=>{if(v>=actualCenter-5&&v<=actualCenter+5)allLineVals.push(v);});if(showIssn&&issnLine)issnLine.forEach(v=>{if(v>=actualCenter-5&&v<=actualCenter+5)allLineVals.push(v);});if(allLineVals.length){rangeMin=Math.min(rangeMin,...allLineVals);rangeMax=Math.max(rangeMax,...allLineVals);}}
+  if(showLines){const allLineVals=[];if(goalLine)goalLine.forEach(v=>{if(v>=actualCenter-5&&v<=actualCenter+5)allLineVals.push(v);});if(showIssn&&issnLine)issnLine.forEach(v=>{if(v>=actualCenter-5&&v<=actualCenter+5)allLineVals.push(v);});if(showIssn&&issnUpper)issnUpper.forEach(v=>{if(v>=actualCenter-5&&v<=actualCenter+5)allLineVals.push(v);});if(showIssn&&issnLower)issnLower.forEach(v=>{if(v>=actualCenter-5&&v<=actualCenter+5)allLineVals.push(v);});if(allLineVals.length){rangeMin=Math.min(rangeMin,...allLineVals);rangeMax=Math.max(rangeMax,...allLineVals);}}
   const axisMin=+(Math.floor(rangeMin/step)*step-step).toFixed(2);
   const axisMax=+(Math.ceil(rangeMax/step)*step+step).toFixed(2);
   const axisRange=axisMax-axisMin||1;
@@ -92,6 +126,7 @@ function TrendChart({data,mode,onClickDate,goalLine,issnLine,showLines,showIssn=
         <svg width={SCROLL_W} height={H} style={{display:"block",minWidth:SCROLL_W}}>
           <defs><linearGradient id={`tg-${chartId}-${mode}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={lineColor} stopOpacity="0.12"/><stop offset="100%" stopColor={lineColor} stopOpacity="0"/></linearGradient><clipPath id={`cClip-${chartId}`}><rect x="0" y={clipTop} width={SCROLL_W} height={clipHeight}/></clipPath></defs>
           {yLabels.map((v,i)=>(<line key={i} x1={0} y1={toY(v)} x2={SCROLL_W} y2={toY(v)} stroke="#ebebea" strokeWidth="1"/>))}
+          {showLines&&showIssn&&issnUpper&&issnLower&&issnUpper.length>0&&(()=>{const upperPts=issnUpper.map((w,i)=>`${toX(i)},${toY(w)}`);const lowerPts=[...issnLower].map((w,i)=>`${toX(i)},${toY(w)}`).reverse();return(<polygon clipPath={`url(#cClip-${chartId})`} points={[...upperPts,...lowerPts].join(" ")} fill="rgba(255,159,64,0.12)" stroke="none"/>);})()}
           {showLines&&showIssn&&issnLine&&issnLine.length>0&&(<polyline clipPath={`url(#cClip-${chartId})`} points={mkPts(issnLine)} fill="none" stroke="#ff9f40" strokeWidth="2" strokeDasharray="3 3"/>)}
           {showLines&&goalLine&&goalLine.length>0&&(<polyline clipPath={`url(#cClip-${chartId})`} points={mkPts(goalLine)} fill="none" stroke="#6bcf7f" strokeWidth="2" strokeDasharray="4 2"/>)}
           <polygon points={`${toX(0)},${PAD_T+CHART_H} ${pts.join(" ")} ${toX(data.length-1)},${PAD_T+CHART_H}`} fill={`url(#tg-${chartId}-${mode})`}/>
@@ -101,7 +136,7 @@ function TrendChart({data,mode,onClickDate,goalLine,issnLine,showLines,showIssn=
               <rect x={cx-26} y={H-PAD_B} width={52} height={PAD_B} fill="transparent"/><text x={cx} y={H-16} textAnchor="middle" fontSize="8" fill={has?"#2a2a2a":"#ccc"} fontFamily="'DM Mono',monospace" fontWeight={has?"600":"400"}>{fmtShort(d.date)}</text>{(i===0||getYear(d.date)!==(i>0?getYear(data[i-1].date):""))&&(<text x={cx} y={H-5} textAnchor="middle" fontSize="7" fill="#f4a261" fontFamily="'DM Mono',monospace" fontWeight="700">{getYear(d.date)}</text>)}
               <circle cx={cx} cy={cy} r={has?4:3} fill="#fff" stroke={has?lineColor:"#ccc"} strokeWidth="2"/>{has&&(<text x={cx} y={cy-10} textAnchor="middle" fontSize="8" fontWeight="700" fill={lineColor} fontFamily="'DM Mono',monospace">{v.toFixed(1)}</text>)}{d.hicarb&&(<text x={cx} y={cy+16} textAnchor="middle" fontSize="7" fontWeight="700" fill="#ff6b35" fontFamily="'DM Mono',monospace">HC</text>)}
             </g>);})}
-          {showLines&&(<g transform={`translate(${SCROLL_W-70},${PAD_T+4})`}><rect x="-6" y="-8" width="72" height={showIssn?72:52} rx="4" fill="rgba(255,255,255,0.85)"/><line x1="0" y1="4" x2="20" y2="4" stroke="#1a1a1a" strokeWidth="2"/><text x="24" y="8" fontSize="7" fill="#1a1a1a" fontWeight="600" fontFamily="'DM Mono',monospace">実測</text><line x1="0" y1="22" x2="20" y2="22" stroke="#6bcf7f" strokeWidth="2" strokeDasharray="4 2"/><text x="24" y="26" fontSize="7" fill="#6bcf7f" fontWeight="600" fontFamily="'DM Mono',monospace">目標</text>{showIssn&&(<><line x1="0" y1="40" x2="20" y2="40" stroke="#ff9f40" strokeWidth="2" strokeDasharray="3 3"/><text x="24" y="44" fontSize="7" fill="#ff9f40" fontWeight="600" fontFamily="'DM Mono',monospace">ISSN</text></>)}</g>)}
+          {showLines&&(<g transform={`translate(${SCROLL_W-80},${PAD_T+4})`}><rect x="-6" y="-8" width="82" height={showIssn?90:52} rx="4" fill="rgba(255,255,255,0.85)"/><line x1="0" y1="4" x2="20" y2="4" stroke="#1a1a1a" strokeWidth="2"/><text x="24" y="8" fontSize="7" fill="#1a1a1a" fontWeight="600" fontFamily="'DM Mono',monospace">実測</text><line x1="0" y1="22" x2="20" y2="22" stroke="#6bcf7f" strokeWidth="2" strokeDasharray="4 2"/><text x="24" y="26" fontSize="7" fill="#6bcf7f" fontWeight="600" fontFamily="'DM Mono',monospace">目標</text>{showIssn&&(<><line x1="0" y1="40" x2="20" y2="40" stroke="#ff9f40" strokeWidth="2" strokeDasharray="3 3"/><text x="24" y="44" fontSize="7" fill="#ff9f40" fontWeight="600" fontFamily="'DM Mono',monospace">ISSN 0.7%/週</text><rect x="0" y="54" width="20" height="10" rx="2" fill="rgba(255,159,64,0.25)" stroke="none"/><text x="24" y="62" fontSize="7" fill="#ff9f40" fontWeight="600" fontFamily="'DM Mono',monospace">推奨 0.5-1.0%</text></>)}</g>)}
         </svg>
       </div>
     </div>);
@@ -144,6 +179,9 @@ function MiniCal({onSel,sel}){
 
 /* ═══════ MAIN APP ═══════ */
 function App(){
+  /* Inject global CSS */
+  useEffect(() => { injectGlobalStyles(); }, []);
+
   /* Load saved state or use defaults */
   const saved=loadLS();
   const D=saved||{};
@@ -151,8 +189,14 @@ function App(){
   const[tw,setTw]=useState(""),[tf,setTf]=useState("");
   const[data,setData]=useState(D.data||MOCK);
   const[calcMode,setCalcMode]=useState(D.calcMode||"auto");
-  const[manual,setManual]=useState(D.manual||{calories:"2000",protein:"150",fat:"55",carbs:"220"});
+  /* ═══ Migrate old data formats ═══ */
+  const MANUAL_DEFAULTS=[{label:"起床後",p:"",f:"",c:"",extra:true},{label:"朝ご飯",p:"",f:"",c:""},{label:"昼ご飯",p:"",f:"",c:""},{label:"晩ご飯",p:"",f:"",c:""},{label:"トレーニング",p:"",f:"",c:"",extra:true},{label:"就寝前",p:"",f:"",c:"",extra:true}];
+  const SEMI_DEFAULTS=[{label:"起床後",labelEn:"WAKING UP",p:"",f:"",c:"",locked:true,extra:true},{label:"朝ご飯",labelEn:"MORNING",p:"",f:"",c:"",locked:true},{label:"昼ご飯",labelEn:"LUNCH",p:"",f:"",c:"",locked:true},{label:"晩ご飯",labelEn:"DINNER",p:"",f:"",c:"",locked:true},{label:"トレーニング",labelEn:"WORKOUT",p:"",f:"",c:"",locked:true,extra:true},{label:"就寝前",labelEn:"PRE-BED",p:"",f:"",c:"",locked:true,extra:true},{label:"その他1",labelEn:"OTHER 1",p:"",f:"",c:"",locked:true},{label:"その他2",labelEn:"OTHER 2",p:"",f:"",c:"",locked:true}];
+  const migrateManual=(saved)=>{if(!saved||!Array.isArray(saved))return MANUAL_DEFAULTS;if(saved.length>=6)return saved;const result=MANUAL_DEFAULTS.map(d=>{const existing=saved.find(s=>s.label===d.label);return existing?{...d,...existing}:d;});return result;};
+  const migrateSemi=(saved)=>{if(!saved||!Array.isArray(saved))return SEMI_DEFAULTS;if(saved.length>=8)return saved;const result=SEMI_DEFAULTS.map(d=>{const existing=saved.find(s=>s.label===d.label);return existing?{...d,...existing}:d;});return result;};
+  const[manualMeals,setManualMeals]=useState(migrateManual(D.manualMeals));
   const[manualExtra,setManualExtra]=useState(D.manualExtra||[{label:"その他1",p:"",f:"",c:""},{label:"その他2",p:"",f:"",c:""}]);
+  const[manualShowExtra,setManualShowExtra]=useState(false); /* false|"wake"|"train"|"bed"|"other" */
   const[tab,setTab]=useState("dashboard");
   const[supps,setSupps]=useState(D.supps||{pre:"クレアチン 5g / カフェイン 200mg",during:"EAA 15g / クエン酸 ○g",post:"ホエイプロテイン 30g / グルタミン 6g",bed:"亜鉛 10g / マグネシウム 150mg"});
   const[reminder,setReminder]=useState(D.reminder||false);
@@ -161,6 +205,15 @@ function App(){
   const[chart,setChart]=useState("weight");
   const[mCloth,setMCloth]=useState(false),[mEdit,setMEdit]=useState(false),[mCal,setMCal]=useState(false);
   const[mMealSet,setMMealSet]=useState(false),[mDelConfirm,setMDelConfirm]=useState(false),[mResetConfirm,setMResetConfirm]=useState(false);
+  const[mInfo,setMInfo]=useState(false);
+  const[mSetPicker,setMSetPicker]=useState(null); /* {mode:"manual"|"semi", idx:number} */
+  const[mSetConfirm,setMSetConfirm]=useState(null); /* {si,mi,mode,idx,label,p,f,c} pending confirmation */
+  const[macroView,setMacroView]=useState("pct"); /* "pct" = % input, "gram" = g input */
+  const[pfcGram,setPfcGram]=useState(D.pfcGram||{p:"",f:"",c:""});
+  const[gramTargetMode,setGramTargetMode]=useState(false); /* false=PFC内比率, true=目標カロリー対比 */
+  const[repFoods,setRepFoods]=useState(D.repFoods||{pName:"鶏むね肉(皮なし)",pPer100:"23.3",fName:"オリーブオイル",fPer100:"100.0",cName:"白米(炊飯)",cPer100:"36.8"});
+  const[remFoodMode,setRemFoodMode]=useState(false); /* false=g表示, true=食材表示 */
+  const[showRepFoods,setShowRepFoods]=useState(false); /* SUPPS折りたたみ */
   const[editTgt,setEditTgt]=useState(null),[calDate,setCalDate]=useState(""),[calW,setCalW]=useState(""),[calF,setCalF]=useState("");
   const[cloth,setCloth]=useState(D.cloth||[{name:"ジム着（T+ショーツ）",gram:"300"},{name:"仕事着（スーツ）",gram:"1500"},{name:"パジャマ",gram:"200"},{name:"スウェット上下",gram:"600"},{name:"カスタム5",gram:""}]);
   const[pfcPct,setPfcPct]=useState(D.pfcPct||{p:"",f:"",c:""});
@@ -174,13 +227,14 @@ function App(){
   const resetHicarb=()=>{setHicarbDays(1);const n=new Date();const ds=`${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,"0")}/${String(n.getDate()).padStart(2,"0")}`;setData(prev=>prev.map(d=>(d.date===ds?{...d,hicarb:true}:d)));};
   const[paceMode,setPaceMode]=useState(D.paceMode||"auto"),[customPace,setCustomPace]=useState(D.customPace||"0.75"),[customDirection,setCustomDirection]=useState(D.customDirection||"cut");
   const[consecutiveYellow]=useState(0),[consecutiveRed]=useState(0);
-  const[semiMeals,setSemiMeals]=useState(D.semiMeals||[{label:"朝ご飯",labelEn:"MORNING",p:"",f:"",c:"",locked:true},{label:"昼ご飯",labelEn:"LUNCH",p:"",f:"",c:"",locked:true},{label:"晩ご飯",labelEn:"DINNER",p:"",f:"",c:"",locked:true},{label:"その他1",labelEn:"OTHER 1",p:"",f:"",c:"",locked:true},{label:"その他2",labelEn:"OTHER 2",p:"",f:"",c:"",locked:true}]);
+  const[semiMeals,setSemiMeals]=useState(migrateSemi(D.semiMeals));
+  const[semiShowExtra,setSemiShowExtra]=useState(false); /* false|"wake"|"train"|"bed"|"other" */
   const[weekOffset,setWeekOffset]=useState(0);
 
   /* ═══ AUTO-SAVE on every state change ═══ */
   useEffect(()=>{
-    saveLS({prof,data,calcMode,manual,manualExtra,supps,reminder,startWeight,gw,gd,startDate,cloth,pfcPct,mealSets,hicarbDays,paceMode,customPace,customDirection,semiMeals});
-  },[prof,data,calcMode,manual,manualExtra,supps,reminder,startWeight,gw,gd,startDate,cloth,pfcPct,mealSets,hicarbDays,paceMode,customPace,customDirection,semiMeals]);
+    saveLS({prof,data,calcMode,manualMeals,manualExtra,supps,reminder,startWeight,gw,gd,startDate,cloth,pfcPct,pfcGram,mealSets,hicarbDays,paceMode,customPace,customDirection,semiMeals,repFoods});
+  },[prof,data,calcMode,manualMeals,manualExtra,supps,reminder,startWeight,gw,gd,startDate,cloth,pfcPct,pfcGram,mealSets,hicarbDays,paceMode,customPace,customDirection,semiMeals,repFoods]);
 
   const record=(ds,w,f,hc)=>{const wv=w!==""&&w!=null?parseFloat(w):null;const fv=f!==""&&f!=null?parseFloat(f):null;setData(prev=>{const ex=prev.findIndex(d=>d.date===ds);if(ex>=0){const n=[...prev];n[ex]={...n[ex],weight:wv??n[ex].weight,fat:fv??n[ex].fat,hicarb:hc!==undefined?hc:n[ex].hicarb};return n;}return[...prev,{date:ds,weight:wv,fat:fv,hicarb:hc||false}].sort((a,b)=>a.date.localeCompare(b.date));});};
 
@@ -193,16 +247,49 @@ function App(){
   const pP=pfcPct.p?parseFloat(pfcPct.p):null,fPr=pfcPct.f?parseFloat(pfcPct.f):null,cP=pfcPct.c?parseFloat(pfcPct.c):null;
   const aFC=calcPFC(tdee,prof.goal,lean,pP&&fPr&&cP?pP:30,pP&&fPr&&cP?fPr:25,prof.goalCustom);
   const mealTarget={protein:Math.round(aFC.protein/3),fat:Math.round(aFC.fat/3),carbs:Math.round(aFC.carbs/3)};
-  const computeSemiMeals=()=>semiMeals.map((m,i)=>{const isMain=i<3;const p=m.locked?(isMain?mealTarget.protein:0):(parseFloat(m.p)||0);const f=m.locked?(isMain?mealTarget.fat:0):(parseFloat(m.f)||0);const c=m.locked?(isMain?mealTarget.carbs:0):(parseFloat(m.c)||0);return{...m,cp:p,cf:f,cc:c,cal:Math.round(p*4+f*9+c*4)};});
+  const computeSemiMeals=()=>semiMeals.map((m)=>{const isMain=["朝ご飯","昼ご飯","晩ご飯"].includes(m.label);const p=m.locked?(isMain?mealTarget.protein:0):(parseFloat(m.p)||0);const f=m.locked?(isMain?mealTarget.fat:0):(parseFloat(m.f)||0);const c=m.locked?(isMain?mealTarget.carbs:0):(parseFloat(m.c)||0);return{...m,cp:p,cf:f,cc:c,cal:Math.round(p*4+f*9+c*4)};});
   const semiComputed=computeSemiMeals();
   const semiTotal={protein:semiComputed.reduce((s,m)=>s+m.cp,0),fat:semiComputed.reduce((s,m)=>s+m.cf,0),carbs:semiComputed.reduce((s,m)=>s+m.cc,0),calories:semiComputed.reduce((s,m)=>s+m.cal,0)};
-  const computeActiveCalories=()=>{if(calcMode==="auto")return aFC;if(calcMode==="manual"){let p=parseFloat(manual.protein)||0,f=parseFloat(manual.fat)||0,c=parseFloat(manual.carbs)||0;manualExtra.forEach(ex=>{p+=parseFloat(ex.p)||0;f+=parseFloat(ex.f)||0;c+=parseFloat(ex.c)||0;});return{calories:Math.round(p*4+f*9+c*4),protein:p,fat:f,carbs:c};}return semiTotal;};
+  const computeActiveCalories=()=>{if(calcMode==="auto")return aFC;if(calcMode==="manual"){let p=0,f=0,c=0;manualMeals.forEach(m=>{p+=parseFloat(m.p)||0;f+=parseFloat(m.f)||0;c+=parseFloat(m.c)||0;});manualExtra.forEach(ex=>{p+=parseFloat(ex.p)||0;f+=parseFloat(ex.f)||0;c+=parseFloat(ex.c)||0;});return{calories:Math.round(p*4+f*9+c*4),protein:p,fat:f,carbs:c};}return semiTotal;};
   const aPFC=computeActiveCalories();
   const computeMealSetTotals=()=>{if(!mealSets[curSetIdx])return{p:0,f:0,c:0,cal:0};let tp=0,tf2=0,tc=0;mealSets[curSetIdx].meals.forEach(m=>{tp+=parseFloat(m.p)||0;tf2+=parseFloat(m.f)||0;tc+=parseFloat(m.c)||0;});return{p:tp,f:tf2,c:tc,cal:Math.round(tp*4+tf2*9+tc*4)};};
   const mealSetTotals=computeMealSetTotals();
   const bodyFatKg=+(W*FP/100).toFixed(1),leanMass=+(W-bodyFatKg).toFixed(1);
   const pfcTotal=aPFC.protein*4+aPFC.fat*9+aPFC.carbs*4;
   const pfcBalance=pfcTotal>0?{p:((aPFC.protein*4/pfcTotal)*100).toFixed(0),f:((aPFC.fat*9/pfcTotal)*100).toFixed(0),c:((aPFC.carbs*4/pfcTotal)*100).toFixed(0)}:{p:"0",f:"0",c:"0"};
+
+  /* ═══ Gram-input PFC balance calc ═══ */
+  const gP=parseFloat(pfcGram.p)||0,gF=parseFloat(pfcGram.f)||0,gC=parseFloat(pfcGram.c)||0;
+  const gTotal=gP*4+gF*9+gC*4;
+  const gramPct=gTotal>0?{p:((gP*4/gTotal)*100).toFixed(1),f:((gF*9/gTotal)*100).toFixed(1),c:((gC*4/gTotal)*100).toFixed(1)}:{p:"0.0",f:"0.0",c:"0.0"};
+  const tgtCal=aFC.calories||1;
+  const gramTargetPct={p:((gP*4/tgtCal)*100).toFixed(1),f:((gF*9/tgtCal)*100).toFixed(1),c:((gC*4/tgtCal)*100).toFixed(1)};
+  const gramTargetSum=parseFloat(gramTargetPct.p)+parseFloat(gramTargetPct.f)+parseFloat(gramTargetPct.c);
+
+  /* ═══ SEMI Remaining (target - current) ═══ */
+  const semiRemaining={protein:aFC.protein-semiTotal.protein,fat:aFC.fat-semiTotal.fat,carbs:aFC.carbs-semiTotal.carbs};
+  const remCal=semiRemaining.protein*4+semiRemaining.fat*9+semiRemaining.carbs*4;
+
+  /* ═══ MANUAL Remaining (target - current) ═══ */
+  const manualRemaining={protein:aFC.protein-aPFC.protein,fat:aFC.fat-aPFC.fat,carbs:aFC.carbs-aPFC.carbs};
+  const manualRemCal=manualRemaining.protein*4+manualRemaining.fat*9+manualRemaining.carbs*4;
+
+  /* ═══ Apply meal set PFC to a meal slot ═══ */
+  const applyMealSet=(setIdx,mealIdx,mode,slotIdx)=>{
+    const src=mealSets[setIdx]?.meals[mealIdx];
+    if(!src)return;
+    if(mode==="manual"){
+      const mLen=manualMeals.length;
+      if(slotIdx<mLen){setManualMeals(prev=>prev.map((m,j)=>j===slotIdx?{...m,p:src.p||"",f:src.f||"",c:src.c||""}:m));}
+      else{const ei=slotIdx-mLen;setManualExtra(prev=>prev.map((m,j)=>j===ei?{...m,p:src.p||"",f:src.f||"",c:src.c||""}:m));}
+    }else if(mode==="semi"){
+      setSemiMeals(prev=>prev.map((m,j)=>j===slotIdx?{...m,p:src.p||"",f:src.f||"",c:src.c||"",locked:false}:m));
+    }
+    setMSetPicker(null);
+  };
+
+  /* ═══ g → 代表食材の重量換算 ═══ */
+  const toFoodGram=(grams,per100)=>{const p=parseFloat(per100);if(!p||p<=0)return"—";return Math.round((grams/p)*100);};
 
   const SW=parseFloat(startWeight)||W;
   const TW=gw;
@@ -214,24 +301,80 @@ function App(){
   const lossPerWeek=(totalLoss/(totalDays/7)).toFixed(2);
 
   const computeGoalLine=(arr)=>{
-    if(paceMode==="custom"){const pv=parseFloat(customPace)||0.75;const sign=customDirection==="cut"?-1:1;const dp=(pv/7)*sign;return arr.map(d=>{const dDate=parseDate(d.date);const dfs=daysBtwn(sdObj,dDate);return SW+dp*dfs;});}
+    /* 常に START DATE/WEIGHT → TARGET DATE/WEIGHT を結ぶ直線 */
     return arr.map(d=>{const dDate=parseDate(d.date);const dfs=daysBtwn(sdObj,dDate);return SW+dailySlope*dfs;});
   };
   const computeIssnLine=(arr)=>{
-    return arr.map(d=>{const dDate=parseDate(d.date);const dfs=daysBtwn(sdObj,dDate);let cw=SW;for(let dd=0;dd<Math.max(0,dfs);dd++){const bmi=calcBMI(cw,heightNum);cw-=(bmi>=25?0.75:0.5)/7;}return cw;});
+    /* ISSN推奨ターゲット: 週あたり体重の0.7%減（複利） */
+    return arr.map(d=>{const dDate=parseDate(d.date);const dfs=Math.max(0,daysBtwn(sdObj,dDate));return SW*Math.pow(1-0.007,dfs/7);});
+  };
+  const computeIssnUpper=(arr)=>{
+    /* 推奨ゾーン上限: 週あたり体重の0.5%減（複利）= 緩やかな減少 */
+    return arr.map(d=>{const dDate=parseDate(d.date);const dfs=Math.max(0,daysBtwn(sdObj,dDate));return SW*Math.pow(1-0.005,dfs/7);});
+  };
+  const computeIssnLower=(arr)=>{
+    /* 推奨ゾーン下限: 週あたり体重の1.0%減（複利）= 急な減少 */
+    return arr.map(d=>{const dDate=parseDate(d.date);const dfs=Math.max(0,daysBtwn(sdObj,dDate));return SW*Math.pow(1-0.010,dfs/7);});
   };
   const goalWeightsFull=computeGoalLine(data);
   const issnWeightsFull=computeIssnLine(data);
+  const issnUpperFull=computeIssnUpper(data);
+  const issnLowerFull=computeIssnLower(data);
   const showIssnLine=!(paceMode==="custom"&&customDirection==="bulk");
 
   const getCurrentTargetPace=()=>{const bmi=calcBMI(W,heightNum);if(paceMode==="auto")return bmi>=25?0.75:0.5;return parseFloat(customPace)||0.75;};
   const getWeekData=(offset)=>{const today=new Date();const refDate=new Date(today);refDate.setDate(today.getDate()+offset*7);const{start,end}=getWeekRange(refDate);const startStr=fmtDS(start),endStr=fmtDS(end);const weekData=data.filter(d=>d.date>=startStr&&d.date<=endStr);return{start,end,startStr,endStr,data:weekData};};
-  const getWeeklyAdvice=(weekData)=>{const sorted=weekData.filter(d=>d.weight!==null).sort((a,b)=>a.date.localeCompare(b.date));if(sorted.length<2)return{color:"green",msg:"✅ データを蓄積中です。記録を続けましょう。",actualPace:null};const first=sorted[0].weight,lastt=sorted[sorted.length-1].weight;const db=Math.max(1,sorted.length-1);const actualPace=((first-lastt)/db)*7;const targetPace=getCurrentTargetPace();if(actualPace>=targetPace)return{color:"green",msg:"✅ 理論通りのペースです。継続しましょう。",actualPace};if(actualPace>=targetPace*0.66){const wk=Math.min(consecutiveYellow,5);let idx;if(wk<1)idx=Math.floor(Math.random()*2);else if(wk<2)idx=2+Math.floor(Math.random()*2);else idx=Math.min(4+(wk-2),5);return{color:"yellow",msg:ADVICE_MSGS.yellow[idx],actualPace};}const wk=Math.min(consecutiveRed,5);let idx;if(wk<1)idx=Math.floor(Math.random()*2);else if(wk<2)idx=2+Math.floor(Math.random()*2);else idx=Math.min(4+(wk-2),5);return{color:"red",msg:ADVICE_MSGS.red[idx],actualPace};};
+  /* ═══ 最小二乗法ヘルパー: 減少率(%)と週ペース(kg/week)を返す ═══ */
+  const calcWeeklyLossRate=(weekData)=>{
+    const sorted=weekData.filter(d=>d.weight!==null).sort((a,b)=>a.date.localeCompare(b.date));
+    if(sorted.length<3)return null;
+    const firstDate=parseDate(sorted[0].date);
+    const n=sorted.length;
+    let sumX=0,sumY=0,sumXY=0,sumX2=0;
+    sorted.forEach(d=>{
+      const x=daysBtwn(firstDate,parseDate(d.date));
+      const y=d.weight;
+      sumX+=x;sumY+=y;sumXY+=x*y;sumX2+=x*x;
+    });
+    const denom=n*sumX2-sumX*sumX;
+    if(denom===0)return null;
+    const slope=(n*sumXY-sumX*sumY)/denom; /* kg/day */
+    const weeklyChange=slope*7; /* kg/week */
+    const avgWeight=sumY/n;
+    const pctLoss=(-weeklyChange/avgWeight)*100; /* 減少がプラス */
+    const pace=-weeklyChange; /* 減少がプラス */
+    return{pctLoss,pace};
+  };
+
+  const getWeeklyAdvice=(thisWeekData,lastWeekData)=>{
+    const thisResult=calcWeeklyLossRate(thisWeekData);
+    if(!thisResult)return{color:"green",msg:"✅ データを蓄積中です。記録を続けましょう。",actualPace:null};
+    const{pctLoss,pace}=thisResult;
+    const actualPace=pace;
+    /* Green: 週0.40%以上の減少 */
+    if(pctLoss>=0.40)return{color:"green",msg:"✅ トレンドは順調な右肩下がりです。現在のPFCを維持しましょう。",actualPace};
+    /* 先週の減少率を算出 */
+    const lastResult=calcWeeklyLossRate(lastWeekData||[]);
+    const lastPct=lastResult?lastResult.pctLoss:0;
+    /* Red: 今週 < 0.15% かつ 先週も < 0.15%（2週連続停滞） */
+    if(pctLoss<0.15&&lastPct<0.15){
+      const wk=Math.min(consecutiveRed,5);
+      let idx;if(wk<1)idx=Math.floor(Math.random()*2);else if(wk<2)idx=2+Math.floor(Math.random()*2);else idx=Math.min(4+(wk-2),5);
+      return{color:"red",msg:ADVICE_MSGS.red[idx],actualPace};
+    }
+    /* Yellow: それ以外（微減 or 停滞1週目） */
+    const wk=Math.min(consecutiveYellow,5);
+    let idx;if(wk<1)idx=Math.floor(Math.random()*2);else if(wk<2)idx=2+Math.floor(Math.random()*2);else idx=Math.min(4+(wk-2),5);
+    return{color:"yellow",msg:ADVICE_MSGS.yellow[idx],actualPace};
+  };
   const currentWeek=getWeekData(weekOffset);
+  const lastWeek=getWeekData(weekOffset-1);
   const wkD=currentWeek.data.length>0?currentWeek.data:[{date:fmtDS(currentWeek.start),weight:null,fat:null,hicarb:false}];
   const weekGoalLine=computeGoalLine(wkD);
   const weekIssnLine=computeIssnLine(wkD);
-  const advice=getWeeklyAdvice(currentWeek.data);
+  const weekIssnUpper=computeIssnUpper(wkD);
+  const weekIssnLower=computeIssnLower(wkD);
+  const advice=getWeeklyAdvice(currentWeek.data,lastWeek.data);
 
   const IB={fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:500,color:"#1a1a1a",background:"#f8f8f6",border:"1px solid #e0e0de",borderRadius:4,padding:"8px 12px",width:"100%",outline:"none"};
   const BP={fontFamily:"'DM Mono',monospace",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:4,cursor:"pointer",fontWeight:600};
@@ -243,7 +386,7 @@ function App(){
     <div style={{maxWidth:540,margin:"0 auto",minHeight:"100%",display:"flex",flexDirection:"column",background:"#f4f4f2"}}>
       {/* HEADER */}
       <header style={{background:"#1a1a1a",padding:"18px 22px 14px",flexShrink:0}}>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:"#fff",letterSpacing:2}}>Diet Logic <span style={{color:"#6a6a6a"}}>Pro Ver1.1</span></h1>
+        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:"#fff",letterSpacing:2}}>Diet Logic <span style={{color:"#6a6a6a"}}>Pro</span></h1>
         <p style={{fontSize:8,letterSpacing:6,color:"#5a5a5a",marginTop:4}}>EVIDENCE — BASED BODY RECOMPOSITION</p>
       </header>
       {/* TAB BAR */}
@@ -254,34 +397,89 @@ function App(){
       <main style={{flex:1,padding:"20px 16px 32px",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
         {/* ══════ DASHBOARD ══════ */}
         {tab==="dashboard"&&(<div className="fu">
-          {/* STATUS BAR */}
-          <Card style={{marginBottom:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,textAlign:"center"}}>{[{l:"BMR",v:Math.round(bmr)+" kcal"},{l:"TDEE",v:Math.round(tdee)+" kcal"},{l:"BMI",v:calcBMI(W,heightNum).toFixed(1)}].map(s=>(<div key={s.l}><p style={{fontSize:8,letterSpacing:3,color:"#8a8a8a",marginBottom:4}}>{s.l}</p><p style={{fontSize:16,fontWeight:700,color:"#1a1a1a"}}>{s.v}</p></div>))}</div><div style={{borderTop:"1px solid #ebebea",marginTop:14,paddingTop:14,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,textAlign:"center"}}>{[{l:"体重",v:W+" kg"},{l:"体脂肪",v:FP+"%"},{l:"脂肪量",v:bodyFatKg+"kg"},{l:"除脂肪",v:leanMass+"kg"}].map(s=>(<div key={s.l}><p style={{fontSize:8,color:"#aaa",marginBottom:2}}>{s.l}</p><p style={{fontSize:12,fontWeight:700,color:"#2a2a2a"}}>{s.v}</p></div>))}</div></Card>
           {/* TODAY'S LOG */}
           <Card style={{marginBottom:14}}><SL>TODAY'S LOG</SL><div style={{display:"flex",gap:10,alignItems:"flex-end"}}><div style={{flex:1}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>体重 (kg)</p><input type="text" inputMode="decimal" placeholder={W.toString()} value={tw} onChange={e=>setTw(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,fontSize:20,fontWeight:700,padding:"6px 10px"}}/></div><div style={{flex:1}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>体脂肪率 (%)</p><input type="text" inputMode="decimal" placeholder={FP.toString()} value={tf} onChange={e=>setTf(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,fontSize:20,fontWeight:700,padding:"6px 10px"}}/></div><div style={{display:"flex",flexDirection:"column",gap:6}}><button onClick={()=>setMCloth(true)} style={{...BS,fontSize:9,letterSpacing:2,padding:"8px 14px"}}>詳細</button><button onClick={()=>{if(!tw&&!tf)return;const n=new Date();const ds=`${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,"0")}/${String(n.getDate()).padStart(2,"0")}`;record(ds,tw,tf);setTw("");setTf("");}} style={{...BP,fontSize:9,letterSpacing:2,padding:"8px 14px",opacity:(tw||tf)?1:0.35}}>記録</button></div></div></Card>
           {/* WEIGHT TREND */}
-          <Card style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><SL>{chart==="weight"?"WEIGHT TREND":"BODY FAT TREND"}</SL><div style={{display:"flex",gap:8,alignItems:"center",marginTop:-14}}><button onClick={()=>{setCalDate("");setCalW("");setCalF("");setMCal(true);}} style={{background:"none",border:"1px solid #e0e0de",borderRadius:4,padding:"4px 8px",cursor:"pointer",fontSize:14,lineHeight:1,color:"#3a3a3a"}}>📅</button><button onClick={()=>setChart(m=>(m==="weight"?"fat":"weight"))} style={{...BS,fontSize:9,letterSpacing:2,padding:"5px 11px"}}>切換え</button></div></div><TrendChart chartId="dash" data={data} mode={chart} onClickDate={d=>{if(d.weight===null&&d.fat===null)return;setEditTgt({...d});setMEdit(true);}} goalLine={chart==="weight"?goalWeightsFull:null} issnLine={chart==="weight"?issnWeightsFull:null} showLines={chart==="weight"} showIssn={showIssnLine}/><p style={{fontSize:9,color:"#bbb",marginTop:8,textAlign:"right"}}>← スクロール可 ／ 記録日をタップで修正</p></Card>
-          {/* DAILY MACROS + PFC input */}
-          <Card><SL>DAILY MACROS</SL><div style={{display:"flex",alignItems:"center",gap:20}}><MacroRing protein={aPFC.protein} fat={aPFC.fat} carbs={aPFC.carbs}/><div style={{flex:1}}>{[{l:"PROTEIN",v:aPFC.protein,c:"#1a1a1a"},{l:"FAT",v:aPFC.fat,c:"#6a6a6a"},{l:"CARBS",v:aPFC.carbs,c:"#b8b8b6"}].map(m=>(<div key={m.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:m.c}}/><span style={{fontSize:9,letterSpacing:3,color:"#5a5a5a",fontWeight:600}}>{m.l}</span></div><span style={{fontSize:18,fontWeight:700,color:"#1a1a1a"}}>{m.v}<span style={{fontSize:10,color:"#8a8a8a",fontWeight:400,marginLeft:2}}>g</span></span></div>))}<div style={{borderTop:"1px solid #ebebea",paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:9,letterSpacing:3,color:"#8a8a8a"}}>P:F:C BALANCE</span><span style={{fontSize:12,color:"#2a2a2a",fontWeight:700}}>{pfcBalance.p}% : {pfcBalance.f}% : {pfcBalance.c}%</span></div></div></div><div style={{borderTop:"1px solid #ebebea",marginTop:16,paddingTop:14}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:10}}>PFCバランス（%）任意入力</p>{pfcErr&&<p style={{color:"#e63946",fontSize:11,fontWeight:600,marginBottom:8}}>PFCの合計が100になるように入力して下さい。</p>}<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>{[{k:"p",l:"P %"},{k:"f",l:"F %"},{k:"c",l:"C %"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={pfcPct[x.k]} placeholder="—" onChange={e=>setPfcPct(p=>({...p,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}))} style={{...IB,fontSize:13,fontWeight:700,textAlign:"center"}}/></div>))}</div></div></Card>
+          <Card style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><SL>{chart==="weight"?"WEIGHT TREND":"BODY FAT TREND"}</SL><div style={{display:"flex",gap:8,alignItems:"center",marginTop:-14}}><button onClick={()=>{setCalDate("");setCalW("");setCalF("");setMCal(true);}} style={{background:"none",border:"1px solid #e0e0de",borderRadius:4,padding:"4px 8px",cursor:"pointer",fontSize:14,lineHeight:1,color:"#3a3a3a"}}>📅</button><button onClick={()=>setChart(m=>(m==="weight"?"fat":"weight"))} style={{...BS,fontSize:9,letterSpacing:2,padding:"5px 11px"}}>切換え</button></div></div><TrendChart chartId="dash" data={data} mode={chart} onClickDate={d=>{if(d.weight===null&&d.fat===null)return;setEditTgt({...d});setMEdit(true);}} goalLine={chart==="weight"?goalWeightsFull:null} issnLine={chart==="weight"?issnWeightsFull:null} issnUpper={chart==="weight"?issnUpperFull:null} issnLower={chart==="weight"?issnLowerFull:null} showLines={chart==="weight"} showIssn={showIssnLine}/><p style={{fontSize:9,color:"#bbb",marginTop:8,textAlign:"right"}}>← スクロール可 ／ 記録日をタップで修正</p></Card>
         </div>)}
 
         {/* ══════ CALC ══════ */}
         {tab==="calc"&&(<div className="fu">
-          {/* GOAL */}
-          <Card style={{marginBottom:14}}><SL>GOAL</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>START DATE</p><input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{...IB,fontSize:12}}/></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>TARGET DATE</p><input type="date" value={gd} onChange={e=>setGd(e.target.value)} style={{...IB,fontSize:12}}/></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>START WEIGHT</p><div style={{display:"flex",alignItems:"center",gap:8}}><input type="text" inputMode="decimal" value={startWeight} onChange={e=>setStartWeight(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,width:90,fontSize:18,fontWeight:700,textAlign:"center"}}/><span style={{fontSize:13,color:"#5a5a5a",fontWeight:600}}>kg</span></div></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>TARGET WEIGHT</p><div style={{display:"flex",alignItems:"center",gap:8}}><input type="text" inputMode="decimal" value={gw} onChange={e=>setGw(parseFloat(e.target.value.replace(/[^0-9.]/g,""))||0)} style={{...IB,width:90,fontSize:18,fontWeight:700,textAlign:"center"}}/><span style={{fontSize:13,color:"#5a5a5a",fontWeight:600}}>kg</span></div><p style={{fontSize:12,color:"#3a3a3a",marginTop:8,fontWeight:600}}>残り {Math.abs(W-gw).toFixed(1)} kg ({SW>TW?"減量":SW<TW?"増量":"維持"})</p></div></div><div style={{borderTop:"1px solid #ebebea",paddingTop:14}}><p style={{fontSize:9,letterSpacing:3,color:"#8a8a8a",fontWeight:500,marginBottom:10}}>目標ペース（機械計算）</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[{l:"月",v:`${lossPerMonth} kg/月`},{l:"週",v:`${lossPerWeek} kg/週`}].map(p=>(<div key={p.l} style={{background:"#f8f8f6",borderRadius:4,padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:8,color:"#8a8a8a",letterSpacing:2,marginBottom:6}}>{p.l}</p><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a",lineHeight:1.2}}>{p.v}</p></div>))}</div></div></Card>
-          {/* CALCULATION MODE */}
-          <Card style={{marginBottom:14}}><SL>CALCULATION MODE</SL><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>{[{id:"auto",l:"AUTO",s:"ISSN/NSCA"},{id:"manual",l:"MANUAL",s:"全手入力"},{id:"semi",l:"SEMI",s:"微調整"}].map(m=>(<div key={m.id} onClick={()=>setCalcMode(m.id)} style={{border:`2px solid ${calcMode===m.id?"#1a1a1a":"#e0e0de"}`,background:calcMode===m.id?"#1a1a1a":"#fff",borderRadius:5,padding:"14px 10px",textAlign:"center",cursor:"pointer"}}><p style={{fontSize:10,letterSpacing:3,fontWeight:700,color:calcMode===m.id?"#fff":"#2a2a2a"}}>{m.l}</p><p style={{fontSize:9,color:calcMode===m.id?"#aaa":"#8a8a8a",marginTop:4}}>{m.s}</p></div>))}</div><div style={{borderTop:"1px solid #ebebea",paddingTop:16}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:10}}>PFCバランス（%）任意入力</p>{pfcErr&&<p style={{color:"#e63946",fontSize:11,fontWeight:600,marginBottom:8}}>PFCの合計が100になるように入力して下さい。</p>}<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>{[{k:"p",l:"Protein %"},{k:"f",l:"Fat %"},{k:"c",l:"Carbs %"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={pfcPct[x.k]} placeholder="—" onChange={e=>setPfcPct(p=>({...p,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}))} style={{...IB,fontSize:13,fontWeight:700,textAlign:"center"}}/></div>))}</div></div></Card>
           {/* PROFILE */}
           <Card style={{marginBottom:14}}><SL>PROFILE</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>{[{l:"身長(cm)",k:"height"},{l:"年齢",k:"age"}].map(f=>(<div key={f.k}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>{f.l}</p><input type="text" inputMode="numeric" value={prof[f.k]} onChange={e=>setProf(p=>({...p,[f.k]:e.target.value.replace(/[^0-9]/g,"")}))} style={{...IB,fontWeight:700}}/></div>))}<div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>性別</p><select value={prof.sex} onChange={e=>setProf(p=>({...p,sex:e.target.value}))} style={{...IB}}><option value="male">男性</option><option value="female">女性</option></select></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>目標</p><select value={prof.goal} onChange={e=>setProf(p=>({...p,goal:e.target.value}))} style={{...IB}}><option value="cut">カット (−500)</option><option value="maintain">維持</option><option value="bulk">バルク (+300)</option><option value="custom">任意入力</option></select></div>{prof.goal==="custom"&&(<div style={{gridColumn:"span 2"}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>カロリー増減（kcal/day）</p><input type="text" value={prof.goalCustom} placeholder="例: -300 or +200" onChange={e=>setProf(p=>({...p,goalCustom:e.target.value}))} style={{...IB,fontWeight:700}}/></div>)}</div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:8}}>活動量</p><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{Object.entries(ACT).map(([k,v])=>(<button key={k} onClick={()=>setProf(p=>({...p,activity:k}))} style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,padding:"6px 12px",borderRadius:4,border:"2px solid",cursor:"pointer",fontWeight:600,background:prof.activity===k?"#1a1a1a":"#fff",color:prof.activity===k?"#fff":"#2a2a2a",borderColor:prof.activity===k?"#1a1a1a":"#e0e0de"}}>{v.label}</button>))}</div></Card>
+          {/* GOAL */}
+          <Card style={{marginBottom:14}}><SL>GOAL</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>START DATE</p><input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{...IB,fontSize:12}}/></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>TARGET DATE</p><input type="date" value={gd} onChange={e=>setGd(e.target.value)} style={{...IB,fontSize:12}}/></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>START WEIGHT</p><div style={{display:"flex",alignItems:"center",gap:8}}><input type="text" inputMode="decimal" value={startWeight} onChange={e=>setStartWeight(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,width:90,fontSize:18,fontWeight:700,textAlign:"center"}}/><span style={{fontSize:13,color:"#5a5a5a",fontWeight:600}}>kg</span></div></div><div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>TARGET WEIGHT</p><div style={{display:"flex",alignItems:"center",gap:8}}><input type="text" inputMode="decimal" value={gw} onChange={e=>setGw(parseFloat(e.target.value.replace(/[^0-9.]/g,""))||0)} style={{...IB,width:90,fontSize:18,fontWeight:700,textAlign:"center"}}/><span style={{fontSize:13,color:"#5a5a5a",fontWeight:600}}>kg</span></div><p style={{fontSize:12,color:"#3a3a3a",marginTop:8,fontWeight:600}}>残り {Math.abs(W-gw).toFixed(1)} kg ({SW>TW?"減量":SW<TW?"増量":"維持"})</p></div></div><div style={{borderTop:"1px solid #ebebea",paddingTop:14}}><p style={{fontSize:9,letterSpacing:3,color:"#8a8a8a",fontWeight:500,marginBottom:10}}>目標ペース（機械計算）</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[{l:"月",v:`${lossPerMonth} kg/月`},{l:"週",v:`${lossPerWeek} kg/週`}].map(p=>(<div key={p.l} style={{background:"#f8f8f6",borderRadius:4,padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:8,color:"#8a8a8a",letterSpacing:2,marginBottom:6}}>{p.l}</p><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a",lineHeight:1.2}}>{p.v}</p></div>))}</div></div></Card>
+          {/* STATUS (compact with INFO button) */}
+          <Card style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><SL>STATUS</SL><button onClick={()=>setMInfo(true)} style={{...BS,fontSize:8,letterSpacing:2,padding:"5px 12px",marginTop:-14}}>INFO</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,textAlign:"center"}}>{[{l:"体重",v:W+" kg"},{l:"体脂肪",v:FP+"%"},{l:"脂肪量",v:bodyFatKg+"kg"},{l:"除脂肪",v:leanMass+"kg"}].map(s=>(<div key={s.l}><p style={{fontSize:8,color:"#aaa",marginBottom:2}}>{s.l}</p><p style={{fontSize:12,fontWeight:700,color:"#2a2a2a"}}>{s.v}</p></div>))}</div></Card>
+          {/* DAILY MACROS (moved from DASH) */}
+          <Card style={{marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><SL>DAILY MACROS</SL><button onClick={()=>setMacroView(v=>v==="pct"?"gram":"pct")} style={{...BS,fontSize:8,letterSpacing:2,padding:"5px 12px",marginTop:-14}}>{macroView==="pct"?"g 入力":"% 入力"}</button></div>
+            {macroView==="pct"?(
+              <>
+                {/* %入力モード: %入力欄 → 円グラフ + g表示 */}
+                <div style={{marginBottom:16}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:10}}>PFCバランス（%）入力</p>{pfcErr&&<p style={{color:"#e63946",fontSize:11,fontWeight:600,marginBottom:8}}>合計が100%になるように入力して下さい。</p>}<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>{[{k:"p",l:"P %"},{k:"f",l:"F %"},{k:"c",l:"C %"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={pfcPct[x.k]} placeholder="—" onChange={e=>setPfcPct(p=>({...p,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}))} style={{...IB,fontSize:13,fontWeight:700,textAlign:"center"}}/></div>))}</div></div>
+                <div style={{display:"flex",alignItems:"center",gap:20}}><MacroRing protein={aPFC.protein} fat={aPFC.fat} carbs={aPFC.carbs}/><div style={{flex:1}}>{[{l:"PROTEIN",v:aPFC.protein+"g",sub:pfcBalance.p+"%",c:"#1a1a1a"},{l:"FAT",v:aPFC.fat+"g",sub:pfcBalance.f+"%",c:"#6a6a6a"},{l:"CARBS",v:aPFC.carbs+"g",sub:pfcBalance.c+"%",c:"#b8b8b6"}].map(m=>(<div key={m.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:m.c}}/><span style={{fontSize:9,letterSpacing:3,color:"#5a5a5a",fontWeight:600}}>{m.l}</span></div><div style={{textAlign:"right"}}><span style={{fontSize:18,fontWeight:700,color:"#1a1a1a"}}>{m.v}</span><span style={{fontSize:10,color:"#8a8a8a",marginLeft:6}}>{m.sub}</span></div></div>))}</div></div>
+              </>
+            ):(
+              <>
+                {/* g入力モード: g入力欄 → 円グラフ + %算出表示 */}
+                <div style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600}}>PFCバランス（g）入力</p><button onClick={()=>setGramTargetMode(v=>!v)} style={{...BS,fontSize:7,letterSpacing:1,padding:"4px 8px",background:gramTargetMode?"#1a1a1a":"#fff",color:gramTargetMode?"#fff":"#3a3a3a"}}>{gramTargetMode?"目標CAL対比":"PFC内比率"}</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>{[{k:"p",l:"P (g)"},{k:"f",l:"F (g)"},{k:"c",l:"C (g)"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={pfcGram[x.k]} placeholder="0" onChange={e=>setPfcGram(p=>({...p,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}))} style={{...IB,fontSize:13,fontWeight:700,textAlign:"center"}}/></div>))}</div></div>
+                {(()=>{
+                  const usePct=gramTargetMode?gramTargetPct:gramPct;
+                  const items=[{l:"PROTEIN",v:usePct.p+"%",sub:gP+"g",c:"#1a1a1a",raw:parseFloat(usePct.p)},{l:"FAT",v:usePct.f+"%",sub:gF+"g",c:"#6a6a6a",raw:parseFloat(usePct.f)},{l:"CARBS",v:usePct.c+"%",sub:gC+"g",c:"#b8b8b6",raw:parseFloat(usePct.c)}];
+                  return(<div style={{display:"flex",alignItems:"center",gap:20}}><MacroRing protein={gP} fat={gF} carbs={gC}/><div style={{flex:1}}>{items.map(m=>(<div key={m.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:m.c}}/><span style={{fontSize:9,letterSpacing:3,color:"#5a5a5a",fontWeight:600}}>{m.l}</span></div><div style={{textAlign:"right"}}><span style={{fontSize:18,fontWeight:700,color:gramTargetMode?(m.raw>100?"#e63946":"#1a1a1a"):"#1a1a1a"}}>{m.v}</span><span style={{fontSize:10,color:"#8a8a8a",marginLeft:6}}>{m.sub}</span></div></div>))}<div style={{borderTop:"1px solid #ebebea",paddingTop:8,marginTop:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div>{gTotal>0&&gramTargetMode?(<span style={{fontSize:10,color:gramTargetSum<=100.1?"#2a9d8f":"#e63946",fontWeight:600}}>目標対比 {gramTargetSum.toFixed(1)}%<span style={{fontSize:8,color:"#8a8a8a",marginLeft:4}}>/ {tgtCal} kcal</span></span>):(()=>{const s=parseFloat(gramPct.p)+parseFloat(gramPct.f)+parseFloat(gramPct.c);return gTotal>0?(<span style={{fontSize:10,color:s<=100.1?"#2a9d8f":"#e63946",fontWeight:600}}>合計 {s.toFixed(1)}%</span>):null;})()}</div><div><span style={{fontSize:11,fontWeight:700,color:"#1a1a1a"}}>{Math.round(gTotal)}</span><span style={{fontSize:9,color:"#8a8a8a",marginLeft:4}}>kcal</span></div></div></div></div>);
+                })()}
+              </>
+            )}
+          </Card>
+          {/* CALCULATION MODE */}
+          <Card style={{marginBottom:14}}><SL>CALCULATION MODE</SL><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>{[{id:"auto",l:"AUTO",s:"ISSN/NSCA"},{id:"manual",l:"MANUAL",s:"全手入力"},{id:"semi",l:"SEMI",s:"微調整"}].map(m=>(<div key={m.id} onClick={()=>setCalcMode(m.id)} style={{border:`2px solid ${calcMode===m.id?"#1a1a1a":"#e0e0de"}`,background:calcMode===m.id?"#1a1a1a":"#fff",borderRadius:5,padding:"14px 10px",textAlign:"center",cursor:"pointer"}}><p style={{fontSize:10,letterSpacing:3,fontWeight:700,color:calcMode===m.id?"#fff":"#2a2a2a"}}>{m.l}</p><p style={{fontSize:9,color:calcMode===m.id?"#aaa":"#8a8a8a",marginTop:4}}>{m.s}</p></div>))}</div></Card>
           {/* MEAL SET */}
           <Card style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><SL>食事myセット</SL><button onClick={()=>setMMealSet(true)} style={{...BS,fontSize:9,letterSpacing:2,padding:"6px 14px",marginTop:-14}}>OPEN</button></div></Card>
+          {/* AUTO */}
+          {calcMode==="auto"&&(<Card><SL>AUTO MODE</SL><div style={{marginBottom:14,padding:"14px",background:"#f8f8f6",borderRadius:6,border:"1px solid #e8e8e6"}}><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>毎食（目安）</p><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>{[{k:"p",l:"P (g)",v:mealTarget.protein},{k:"f",l:"F (g)",v:mealTarget.fat},{k:"c",l:"C (g)",v:mealTarget.carbs}].map(m=>(<div key={m.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{m.l}</p><div style={{...IB,fontSize:14,fontWeight:700,textAlign:"center",background:"#ebebea",color:"#6a6a6a",cursor:"default"}}>{m.v}</div></div>))}</div></div><div style={{padding:"14px",background:"#1a1a1a",borderRadius:6}}><p style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:10}}>一日分</p><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>{[{l:"P",v:aFC.protein,u:"g"},{l:"F",v:aFC.fat,u:"g"},{l:"C",v:aFC.carbs,u:"g"},{l:"CAL",v:aFC.calories,u:"kcal"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4}}>{x.l}</p><p style={{fontSize:16,fontWeight:700,color:"#fff"}}>{x.v}</p><p style={{fontSize:8,color:"#6a6a6a"}}>{x.u}</p></div>))}</div><div style={{marginTop:12,borderTop:"1px solid #3a3a3a",paddingTop:10}}><p style={{fontSize:10,color:aFC.calories>tdee?"#ff6b6b":"#6bcf7f",fontWeight:600,textAlign:"center"}}>TDEE差分: {aFC.calories>tdee?"+":""}{(aFC.calories-tdee).toFixed(0)} kcal</p></div></div></Card>)}
           {/* MANUAL */}
-          {calcMode==="manual"&&(<Card><SL>MANUAL INPUT</SL><div style={{marginBottom:14,padding:"14px",background:"#f8f8f6",borderRadius:6,border:"1px solid #e8e8e6"}}><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>メイン</p><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>{[{k:"protein",l:"P (g)"},{k:"fat",l:"F (g)"},{k:"carbs",l:"C (g)"}].map(m=>(<div key={m.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{m.l}</p><input type="text" inputMode="decimal" value={manual[m.k]} onChange={e=>setManual(p=>({...p,[m.k]:e.target.value.replace(/[^0-9.]/g,"")}))} style={{...IB,fontSize:14,fontWeight:700,textAlign:"center"}}/></div>))}</div></div>{manualExtra.map((ex,i)=>(<div key={i} style={{marginBottom:14,padding:"14px",background:"#f8f8f6",borderRadius:6,border:"1px solid #e8e8e6"}}><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>{ex.label}</p><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>{[{k:"p",l:"P (g)"},{k:"f",l:"F (g)"},{k:"c",l:"C (g)"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={ex[x.k]} placeholder="0" onChange={e=>setManualExtra(prev=>prev.map((r,j)=>j===i?{...r,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}:r))} style={{...IB,fontSize:14,fontWeight:700,textAlign:"center"}}/></div>))}</div></div>))}<div style={{background:"#f4f4f2",borderRadius:4,padding:"14px 16px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontSize:10,letterSpacing:3,color:"#5a5a5a",fontWeight:600}}>ACTIVE CALORIES</span><span style={{fontSize:26,fontWeight:700,color:"#1a1a1a"}}>{aPFC.calories}<span style={{fontSize:11,color:"#8a8a8a",fontWeight:400,marginLeft:4}}>kcal</span></span></div><p style={{fontSize:11,color:aPFC.calories>tdee?"#e63946":"#2a9d8f",fontWeight:600}}>活動代謝量との差分: {aPFC.calories>tdee?"+":""}{(aPFC.calories-tdee).toFixed(0)} kcal</p></div></Card>)}
+          {calcMode==="manual"&&(<Card><SL>MANUAL INPUT</SL>
+            {/* REMAINING bar for MANUAL (top) */}
+            <div style={{background:"#f0f0ee",borderRadius:6,padding:"12px 14px",marginBottom:16,border:"1px solid #e0e0de"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><p style={{fontSize:8,letterSpacing:3,color:"#8a8a8a",fontWeight:500}}>REMAINING（残量）</p><button onClick={()=>setRemFoodMode(v=>!v)} style={{...BS,fontSize:7,letterSpacing:1,padding:"3px 8px",background:remFoodMode?"#1a1a1a":"#fff",color:remFoodMode?"#fff":"#3a3a3a"}}>{remFoodMode?"食材":"g"}</button></div>{remFoodMode?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{[{l:"P",v:Math.round(manualRemaining.protein),name:repFoods.pName,per:repFoods.pPer100},{l:"F",v:Math.round(manualRemaining.fat),name:repFoods.fName,per:repFoods.fPer100},{l:"C",v:Math.round(manualRemaining.carbs),name:repFoods.cName,per:repFoods.cPer100}].map(x=>{const isOver=x.v<=0;const fg=isOver?"超過":`約${toFoodGram(x.v,x.per)}`;return(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a"}}>{x.l}</p><p style={{fontSize:9,fontWeight:600,color:isOver?"#e63946":"#2a9d8f",marginTop:2}}>{x.name}</p><p style={{fontSize:14,fontWeight:700,color:isOver?"#e63946":"#2a9d8f"}}>{fg}{!isOver&&<span style={{fontSize:9}}> g</span>}</p></div>);})}</div>):(<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{l:"CAL",v:Math.round(manualRemCal),u:"kcal"},{l:"P",v:Math.round(manualRemaining.protein),u:"g"},{l:"F",v:Math.round(manualRemaining.fat),u:"g"},{l:"C",v:Math.round(manualRemaining.carbs),u:"g"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a"}}>{x.l}</p><p style={{fontSize:16,fontWeight:700,color:x.v<0?"#e63946":"#2a9d8f"}}>{x.v>0?"+":""}{x.v}</p><p style={{fontSize:8,color:"#6a6a6a"}}>{x.u}</p></div>))}</div>)}</div>
+            {(()=>{const renderMealSlot=(meal,i,setter,arr)=>(<div key={"m"+i} style={{marginBottom:14,padding:"14px",background:"#f8f8f6",borderRadius:6,border:"1px solid #e8e8e6"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a"}}>{meal.label}</p><button onClick={()=>setMSetPicker({mode:"manual",idx:i})} style={{...BS,fontSize:8,letterSpacing:1,padding:"4px 8px"}}>myセット読込</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>{[{k:"p",l:"P (g)"},{k:"f",l:"F (g)"},{k:"c",l:"C (g)"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={meal[x.k]} placeholder="0" onChange={e=>setter(prev=>prev.map((m,j)=>j===(arr==="main"?i:i-manualMeals.length)?{...m,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}:m))} style={{...IB,fontSize:14,fontWeight:700,textAlign:"center"}}/></div>))}</div></div>);const els=[];/* 起床後(0)=折りたたみ */
+              els.push(<div key="c0" style={{marginBottom:manualShowExtra?0:0}}><button onClick={()=>setManualShowExtra(v=>v==="wake"?false:"wake")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:manualShowExtra==="wake"?8:14,background:manualShowExtra==="wake"?"#f8f8f6":"#fff"}}>{manualShowExtra==="wake"?"▲ 起床後を閉じる":"▼ 起床後"}</button>{manualShowExtra==="wake"&&renderMealSlot(manualMeals[0],0,setManualMeals,"main")}</div>);
+              /* 朝ご飯(1), 昼ご飯(2), 晩ご飯(3) = 常時表示 */
+              els.push(renderMealSlot(manualMeals[1],1,setManualMeals,"main"));
+              els.push(renderMealSlot(manualMeals[2],2,setManualMeals,"main"));
+              els.push(renderMealSlot(manualMeals[3],3,setManualMeals,"main"));
+              /* トレーニング(4)=折りたたみ */
+              els.push(<div key="c4"><button onClick={()=>setManualShowExtra(v=>v==="train"?false:"train")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:manualShowExtra==="train"?8:14,background:manualShowExtra==="train"?"#f8f8f6":"#fff"}}>{manualShowExtra==="train"?"▲ トレーニングを閉じる":"▼ トレーニング"}</button>{manualShowExtra==="train"&&renderMealSlot(manualMeals[4],4,setManualMeals,"main")}</div>);
+              /* 就寝前(5)=折りたたみ */
+              els.push(<div key="c5"><button onClick={()=>setManualShowExtra(v=>v==="bed"?false:"bed")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:manualShowExtra==="bed"?8:14,background:manualShowExtra==="bed"?"#f8f8f6":"#fff"}}>{manualShowExtra==="bed"?"▲ 就寝前を閉じる":"▼ 就寝前"}</button>{manualShowExtra==="bed"&&renderMealSlot(manualMeals[5],5,setManualMeals,"main")}</div>);
+              /* その他1,2=折りたたみ */
+              els.push(<div key="cex"><button onClick={()=>setManualShowExtra(v=>v==="other"?false:"other")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:manualShowExtra==="other"?8:14,background:manualShowExtra==="other"?"#f8f8f6":"#fff"}}>{manualShowExtra==="other"?"▲ その他を閉じる":"▼ その他"}</button>{manualShowExtra==="other"&&manualExtra.map((ex,ei)=>{const idx=manualMeals.length+ei;return(<div key={idx} style={{marginBottom:14,padding:"14px",background:"#f8f8f6",borderRadius:6,border:"1px solid #e8e8e6"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a"}}>{ex.label}</p><button onClick={()=>setMSetPicker({mode:"manual",idx})} style={{...BS,fontSize:8,letterSpacing:1,padding:"4px 8px"}}>myセット読込</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>{[{k:"p",l:"P (g)"},{k:"f",l:"F (g)"},{k:"c",l:"C (g)"}].map(x=>(<div key={x.k}><p style={{fontSize:9,color:"#6a6a6a",marginBottom:4}}>{x.l}</p><input type="text" inputMode="decimal" value={ex[x.k]} placeholder="0" onChange={e=>setManualExtra(prev=>prev.map((r,j)=>j===ei?{...r,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}:r))} style={{...IB,fontSize:14,fontWeight:700,textAlign:"center"}}/></div>))}</div></div>);})}</div>);
+              return els;})()}
+            <div style={{background:"#1a1a1a",borderRadius:6,padding:"16px",marginTop:4}}><p style={{fontSize:8,letterSpacing:4,color:"#8a8a8a",marginBottom:10}}>1日合計</p><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{l:"P",v:aPFC.protein,u:"g"},{l:"F",v:aPFC.fat,u:"g"},{l:"C",v:aPFC.carbs,u:"g"},{l:"CAL",v:aPFC.calories,u:"kcal"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4}}>{x.l}</p><p style={{fontSize:20,fontWeight:700,color:"#fff"}}>{x.v}</p><p style={{fontSize:8,color:"#6a6a6a"}}>{x.u}</p></div>))}</div><div style={{marginTop:12,borderTop:"1px solid #3a3a3a",paddingTop:10}}><p style={{fontSize:10,color:aPFC.calories>tdee?"#ff6b6b":"#6bcf7f",fontWeight:600,textAlign:"center"}}>TDEE差分: {aPFC.calories>tdee?"+":""}{(aPFC.calories-tdee).toFixed(0)} kcal</p></div></div></Card>)}
           {/* SEMI */}
-          {calcMode==="semi"&&(<Card><SL>SEMI-MANUAL</SL><p style={{fontSize:10,color:"#7a7a7a",marginBottom:16,lineHeight:1.6}}>通常はLOCK状態でAUTO値を表示。例外的な食事があった場合、UNLOCKして実際のPFCを入力してください。</p>{semiComputed.map((m,i)=>{const isLk=semiMeals[i].locked;return(<div key={i} style={{marginBottom:14,padding:"14px",background:isLk?"#f8f8f6":"#fffbf0",borderRadius:6,border:`1px solid ${isLk?"#e8e8e6":"#f4a261"}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a"}}>{m.label}</p><p style={{fontSize:8,color:"#8a8a8a",letterSpacing:2}}>{m.labelEn}</p></div><button onClick={()=>setSemiMeals(prev=>prev.map((x,j)=>j===i?{...x,locked:!x.locked}:x))} style={{fontFamily:"'DM Mono',monospace",display:"flex",alignItems:"center",gap:4,fontSize:8,letterSpacing:2,padding:"5px 12px",borderRadius:3,cursor:"pointer",fontWeight:700,background:isLk?"#1a1a1a":"#fff",color:isLk?"#fff":"#f4a261",border:isLk?"2px solid #1a1a1a":"2px solid #f4a261"}}><span>{isLk?"🔒":"🔓"}</span>{isLk?"LOCKED":"UNLOCKED"}</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{k:"p",l:"P",v:m.cp},{k:"f",l:"F",v:m.cf},{k:"c",l:"C",v:m.cc},{k:"cal",l:"CAL",v:m.cal}].map(x=>(<div key={x.k}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4,letterSpacing:1}}>{x.l}</p>{x.k==="cal"?(<div style={{...IB,fontSize:14,fontWeight:700,textAlign:"center",padding:"8px 6px",background:"#ebebea",color:"#3a3a3a"}}>{x.v}</div>):(<input type="text" inputMode="decimal" value={isLk?x.v:(semiMeals[i][x.k]||"")} readOnly={isLk} placeholder={String(x.v)} onChange={e=>{if(isLk)return;setSemiMeals(prev=>prev.map((sm,j)=>j===i?{...sm,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}:sm));}} style={{...IB,fontSize:14,fontWeight:700,textAlign:"center",padding:"8px 6px",opacity:isLk?0.5:1,cursor:isLk?"not-allowed":"text"}}/>)}</div>))}</div></div>);})}<div style={{background:"#1a1a1a",borderRadius:6,padding:"16px",marginTop:4}}><p style={{fontSize:8,letterSpacing:4,color:"#8a8a8a",marginBottom:10}}>1日合計</p><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{l:"CAL",v:semiTotal.calories,u:"kcal"},{l:"P",v:semiTotal.protein,u:"g"},{l:"F",v:semiTotal.fat,u:"g"},{l:"C",v:semiTotal.carbs,u:"g"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4}}>{x.l}</p><p style={{fontSize:20,fontWeight:700,color:"#fff"}}>{x.v}</p><p style={{fontSize:8,color:"#6a6a6a"}}>{x.u}</p></div>))}</div><div style={{marginTop:12,borderTop:"1px solid #3a3a3a",paddingTop:10}}><p style={{fontSize:10,color:semiTotal.calories>tdee?"#ff6b6b":"#6bcf7f",fontWeight:600,textAlign:"center"}}>TDEE差分: {semiTotal.calories>tdee?"+":""}{(semiTotal.calories-tdee).toFixed(0)} kcal</p></div></div></Card>)}
+          {calcMode==="semi"&&(<Card><SL>SEMI-MANUAL</SL><p style={{fontSize:10,color:"#7a7a7a",marginBottom:16,lineHeight:1.6}}>通常はLOCK状態でAUTO値を表示。例外的な食事があった場合、UNLOCKして実際のPFCを入力してください。</p>
+            {/* Remaining bar */}
+            <div style={{background:"#f0f0ee",borderRadius:6,padding:"12px 14px",marginBottom:16,border:"1px solid #e0e0de"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><p style={{fontSize:8,letterSpacing:3,color:"#8a8a8a",fontWeight:500}}>REMAINING（残量）</p><button onClick={()=>setRemFoodMode(v=>!v)} style={{...BS,fontSize:7,letterSpacing:1,padding:"3px 8px",background:remFoodMode?"#1a1a1a":"#fff",color:remFoodMode?"#fff":"#3a3a3a"}}>{remFoodMode?"食材":"g"}</button></div>{remFoodMode?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>{[{l:"P",v:Math.round(semiRemaining.protein),name:repFoods.pName,per:repFoods.pPer100},{l:"F",v:Math.round(semiRemaining.fat),name:repFoods.fName,per:repFoods.fPer100},{l:"C",v:Math.round(semiRemaining.carbs),name:repFoods.cName,per:repFoods.cPer100}].map(x=>{const isOver=x.v<=0;const fg=isOver?"超過":`約${toFoodGram(x.v,x.per)}`;return(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a"}}>{x.l}</p><p style={{fontSize:9,fontWeight:600,color:isOver?"#e63946":"#2a9d8f",marginTop:2}}>{x.name}</p><p style={{fontSize:14,fontWeight:700,color:isOver?"#e63946":"#2a9d8f"}}>{fg}{!isOver&&<span style={{fontSize:9}}> g</span>}</p></div>);})}</div>):(<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{l:"CAL",v:Math.round(remCal),u:"kcal"},{l:"P",v:Math.round(semiRemaining.protein),u:"g"},{l:"F",v:Math.round(semiRemaining.fat),u:"g"},{l:"C",v:Math.round(semiRemaining.carbs),u:"g"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a"}}>{x.l}</p><p style={{fontSize:16,fontWeight:700,color:x.v<0?"#e63946":"#2a9d8f"}}>{x.v>0?"+":""}{x.v}</p><p style={{fontSize:8,color:"#6a6a6a"}}>{x.u}</p></div>))}</div>)}</div>
+            {(()=>{const renderSemiSlot=(m,i)=>{const isLk=semiMeals[i].locked;return(<div key={"s"+i} style={{marginBottom:14,padding:"14px",background:isLk?"#f8f8f6":"#fffbf0",borderRadius:6,border:`1px solid ${isLk?"#e8e8e6":"#f4a261"}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><p style={{fontSize:11,fontWeight:700,color:"#1a1a1a"}}>{m.label}</p><p style={{fontSize:8,color:"#8a8a8a",letterSpacing:2}}>{m.labelEn}</p></div><div style={{display:"flex",gap:4,alignItems:"center"}}><button onClick={()=>setMSetPicker({mode:"semi",idx:i})} style={{...BS,fontSize:7,letterSpacing:1,padding:"4px 6px"}}>myセット読込</button><button onClick={()=>setSemiMeals(prev=>prev.map((x,j)=>j===i?{...x,locked:!x.locked}:x))} style={{fontFamily:"'DM Mono',monospace",display:"flex",alignItems:"center",gap:4,fontSize:8,letterSpacing:2,padding:"5px 12px",borderRadius:3,cursor:"pointer",fontWeight:700,background:isLk?"#1a1a1a":"#fff",color:isLk?"#fff":"#f4a261",border:isLk?"2px solid #1a1a1a":"2px solid #f4a261"}}><span>{isLk?"🔒":"🔓"}</span>{isLk?"LOCKED":"UNLOCKED"}</button></div></div><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{k:"p",l:"P",v:m.cp},{k:"f",l:"F",v:m.cf},{k:"c",l:"C",v:m.cc},{k:"cal",l:"CAL",v:m.cal}].map(x=>(<div key={x.k}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4,letterSpacing:1}}>{x.l}</p>{x.k==="cal"?(<div style={{...IB,fontSize:14,fontWeight:700,textAlign:"center",padding:"8px 6px",background:"#ebebea",color:"#3a3a3a"}}>{x.v}</div>):(<input type="text" inputMode="decimal" value={isLk?x.v:(semiMeals[i][x.k]||"")} readOnly={isLk} placeholder={String(x.v)} onChange={e=>{if(isLk)return;setSemiMeals(prev=>prev.map((sm,j)=>j===i?{...sm,[x.k]:e.target.value.replace(/[^0-9.]/g,"")}:sm));}} style={{...IB,fontSize:14,fontWeight:700,textAlign:"center",padding:"8px 6px",opacity:isLk?0.5:1,cursor:isLk?"not-allowed":"text"}}/>)}</div>))}</div></div>);};
+              const sc=semiComputed;const els=[];
+              /* 起床後(0)=折りたたみ */
+              els.push(<div key="sc0"><button onClick={()=>setSemiShowExtra(v=>v==="wake"?false:"wake")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:semiShowExtra==="wake"?8:14,background:semiShowExtra==="wake"?"#f8f8f6":"#fff"}}>{semiShowExtra==="wake"?"▲ 起床後を閉じる":"▼ 起床後"}</button>{semiShowExtra==="wake"&&renderSemiSlot(sc[0],0)}</div>);
+              /* 朝ご飯(1), 昼ご飯(2), 晩ご飯(3) */
+              els.push(renderSemiSlot(sc[1],1));els.push(renderSemiSlot(sc[2],2));els.push(renderSemiSlot(sc[3],3));
+              /* トレーニング(4)=折りたたみ */
+              els.push(<div key="sc4"><button onClick={()=>setSemiShowExtra(v=>v==="train"?false:"train")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:semiShowExtra==="train"?8:14,background:semiShowExtra==="train"?"#f8f8f6":"#fff"}}>{semiShowExtra==="train"?"▲ トレーニングを閉じる":"▼ トレーニング"}</button>{semiShowExtra==="train"&&renderSemiSlot(sc[4],4)}</div>);
+              /* 就寝前(5)=折りたたみ */
+              els.push(<div key="sc5"><button onClick={()=>setSemiShowExtra(v=>v==="bed"?false:"bed")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:semiShowExtra==="bed"?8:14,background:semiShowExtra==="bed"?"#f8f8f6":"#fff"}}>{semiShowExtra==="bed"?"▲ 就寝前を閉じる":"▼ 就寝前"}</button>{semiShowExtra==="bed"&&renderSemiSlot(sc[5],5)}</div>);
+              /* その他1(6), その他2(7)=折りたたみ */
+              els.push(<div key="scex"><button onClick={()=>setSemiShowExtra(v=>v==="other"?false:"other")} style={{...BS,width:"100%",padding:"8px",fontSize:9,letterSpacing:2,marginBottom:semiShowExtra==="other"?8:14,background:semiShowExtra==="other"?"#f8f8f6":"#fff"}}>{semiShowExtra==="other"?"▲ その他を閉じる":"▼ その他"}</button>{semiShowExtra==="other"&&<>{renderSemiSlot(sc[6],6)}{renderSemiSlot(sc[7],7)}</>}</div>);
+              return els;})()}<div style={{background:"#1a1a1a",borderRadius:6,padding:"16px",marginTop:4}}><p style={{fontSize:8,letterSpacing:4,color:"#8a8a8a",marginBottom:10}}>1日合計</p><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{[{l:"P",v:semiTotal.protein,u:"g"},{l:"F",v:semiTotal.fat,u:"g"},{l:"C",v:semiTotal.carbs,u:"g"},{l:"CAL",v:semiTotal.calories,u:"kcal"}].map(x=>(<div key={x.l} style={{textAlign:"center"}}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4}}>{x.l}</p><p style={{fontSize:20,fontWeight:700,color:"#fff"}}>{x.v}</p><p style={{fontSize:8,color:"#6a6a6a"}}>{x.u}</p></div>))}</div><div style={{marginTop:12,borderTop:"1px solid #3a3a3a",paddingTop:10}}><p style={{fontSize:10,color:semiTotal.calories>tdee?"#ff6b6b":"#6bcf7f",fontWeight:600,textAlign:"center"}}>TDEE差分: {semiTotal.calories>tdee?"+":""}{(semiTotal.calories-tdee).toFixed(0)} kcal</p></div></div></Card>)}
         </div>)}
 
         {/* ══════ SUPPS ══════ */}
-        {tab==="supps"&&(<div className="fu"><p style={{fontSize:9,letterSpacing:4,color:"#8a8a8a",fontWeight:500,marginBottom:20}}>SUPPLEMENT SCHEDULE</p>{[{k:"pre",l:"PRE-WORKOUT",icon:"▲",dot:"#1a1a1a"},{k:"during",l:"INTRA-WORKOUT",icon:"◆",dot:"#5a5a5a"},{k:"post",l:"POST-WORKOUT",icon:"▼",dot:"#8a8a8a"},{k:"bed",l:"PRE-BED",icon:"●",dot:"#b8b8b6"}].map(slot=>(<Card key={slot.k} style={{marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}><span style={{fontSize:12,color:slot.dot}}>{slot.icon}</span><p style={{fontSize:10,letterSpacing:4,color:"#2a2a2a",fontWeight:700}}>{slot.l}</p></div><input value={supps[slot.k]} placeholder="サプリメントを入力..." onChange={e=>setSupps(p=>({...p,[slot.k]:e.target.value}))} style={{...IB,fontSize:12}}/>{slot.k==="bed"&&(<div style={{marginTop:16,borderTop:"1px solid #ebebea",paddingTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{fontSize:10,letterSpacing:3,color:"#2a2a2a",fontWeight:700}}>REMINDER</p><p style={{fontSize:11,color:"#7a7a7a",marginTop:3}}>Google Tasks 連携（予定）</p></div><div onClick={()=>setReminder(!reminder)} style={{width:44,height:26,borderRadius:13,cursor:"pointer",background:reminder?"#1a1a1a":"#d0d0ce",position:"relative",transition:"background .2s"}}><div style={{width:20,height:20,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:reminder?21:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.25)"}}/></div></div>{reminder&&(<div style={{background:"#f8f8f6",border:"1px solid #e8e8e6",borderRadius:4,padding:"14px 16px"}}><p style={{fontSize:9,letterSpacing:3,color:"#8a8a8a",marginBottom:10}}>REMIND AT</p><input type="time" defaultValue="22:30" style={{...IB,width:"auto",fontSize:18,fontWeight:700}}/></div>)}</div>)}</Card>))}</div>)}
+        {tab==="supps"&&(<div className="fu"><p style={{fontSize:9,letterSpacing:4,color:"#8a8a8a",fontWeight:500,marginBottom:20}}>SUPPLEMENT SCHEDULE</p>{[{k:"pre",l:"PRE-WORKOUT",icon:"▲",dot:"#1a1a1a"},{k:"during",l:"INTRA-WORKOUT",icon:"◆",dot:"#5a5a5a"},{k:"post",l:"POST-WORKOUT",icon:"▼",dot:"#8a8a8a"},{k:"bed",l:"PRE-BED",icon:"●",dot:"#b8b8b6"}].map(slot=>(<Card key={slot.k} style={{marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}><span style={{fontSize:12,color:slot.dot}}>{slot.icon}</span><p style={{fontSize:10,letterSpacing:4,color:"#2a2a2a",fontWeight:700}}>{slot.l}</p></div><input value={supps[slot.k]} placeholder="サプリメントを入力..." onChange={e=>setSupps(p=>({...p,[slot.k]:e.target.value}))} style={{...IB,fontSize:12}}/>{slot.k==="bed"&&(<div style={{marginTop:16,borderTop:"1px solid #ebebea",paddingTop:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{fontSize:10,letterSpacing:3,color:"#2a2a2a",fontWeight:700}}>REMINDER</p><p style={{fontSize:11,color:"#7a7a7a",marginTop:3}}>Google Tasks 連携（予定）</p></div><div onClick={()=>setReminder(!reminder)} style={{width:44,height:26,borderRadius:13,cursor:"pointer",background:reminder?"#1a1a1a":"#d0d0ce",position:"relative",transition:"background .2s"}}><div style={{width:20,height:20,borderRadius:"50%",background:"#fff",position:"absolute",top:3,left:reminder?21:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.25)"}}/></div></div>{reminder&&(<div style={{background:"#f8f8f6",border:"1px solid #e8e8e6",borderRadius:4,padding:"14px 16px"}}><p style={{fontSize:9,letterSpacing:3,color:"#8a8a8a",marginBottom:10}}>REMIND AT</p><input type="time" defaultValue="22:30" style={{...IB,width:"auto",fontSize:18,fontWeight:700}}/></div>)}</div>)}</Card>))}
+          {/* 代表食材 */}
+          <Card style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} onClick={()=>setShowRepFoods(v=>!v)}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:12,color:"#5a5a5a"}}>🥩</span><p style={{fontSize:10,letterSpacing:4,color:"#2a2a2a",fontWeight:700}}>代表食材</p></div><span style={{fontSize:14,color:"#8a8a8a",transition:"transform .2s",transform:showRepFoods?"rotate(180deg)":"rotate(0)"}}>▾</span></div>{showRepFoods&&(<div style={{marginTop:16}}><p style={{fontSize:9,color:"#7a7a7a",lineHeight:1.7,marginBottom:14}}>REMAINING（残量）を「食材」表示にした際に使用される代表食材と100gあたりの含有量です。</p>{[{k:"p",l:"タンパク質(P)",nameKey:"pName",perKey:"pPer100",ph:"鶏むね肉(皮なし)"},{k:"f",l:"脂質(F)",nameKey:"fName",perKey:"fPer100",ph:"オリーブオイル"},{k:"c",l:"炭水化物(C)",nameKey:"cName",perKey:"cPer100",ph:"白米(炊飯)"}].map(x=>(<div key={x.k} style={{marginBottom:14,padding:"12px",background:"#f8f8f6",borderRadius:4}}><p style={{fontSize:9,letterSpacing:2,color:"#8a8a8a",fontWeight:600,marginBottom:8}}>{x.l}</p><div style={{display:"flex",gap:8}}><div style={{flex:2}}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4}}>食材名</p><input type="text" value={repFoods[x.nameKey]} placeholder={x.ph} onChange={e=>setRepFoods(p=>({...p,[x.nameKey]:e.target.value}))} style={{...IB,fontSize:11}}/></div><div style={{flex:1}}><p style={{fontSize:8,color:"#7a7a7a",marginBottom:4}}>100gあたり(g)</p><input type="text" inputMode="decimal" value={repFoods[x.perKey]} placeholder="0.0" onChange={e=>setRepFoods(p=>({...p,[x.perKey]:e.target.value.replace(/[^0-9.]/g,"")}))} style={{...IB,fontSize:11,fontWeight:700,textAlign:"center"}}/></div></div></div>))}</div>)}</Card>
+        </div>)}
 
         {/* ══════ ADVISOR ══════ */}
         {tab==="advisor"&&(<div className="fu"><p style={{fontSize:9,letterSpacing:4,color:"#8a8a8a",fontWeight:500,marginBottom:20}}>ADVISOR — ISSN / NSCA</p>
@@ -289,7 +487,7 @@ function App(){
             {paceMode==="auto"&&(<div style={{background:"#f8f8f6",borderRadius:4,padding:"12px 14px"}}><p style={{fontSize:9,color:"#7a7a7a",marginBottom:6}}>現在のBMI: <strong style={{color:"#1a1a1a"}}>{calcBMI(W,heightNum).toFixed(1)}</strong></p><p style={{fontSize:9,color:"#7a7a7a"}}>適用ペース: <strong style={{color:"#1a1a1a"}}>{calcBMI(W,heightNum)>=25?"0.75":"0.50"} kg/週</strong><span style={{fontSize:8,color:"#aaa",marginLeft:6}}>({calcBMI(W,heightNum)>=25?"BMI≥25":"BMI<25"})</span></p></div>)}
             {paceMode==="custom"&&(<div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:8}}>方向</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}><button onClick={()=>setCustomDirection("cut")} style={{...BS,fontSize:10,letterSpacing:2,padding:"10px",background:customDirection==="cut"?"#1a1a1a":"#fff",color:customDirection==="cut"?"#fff":"#3a3a3a",borderColor:customDirection==="cut"?"#1a1a1a":"#d0d0ce"}}>減量</button><button onClick={()=>setCustomDirection("bulk")} style={{...BS,fontSize:10,letterSpacing:2,padding:"10px",background:customDirection==="bulk"?"#1a1a1a":"#fff",color:customDirection==="bulk"?"#fff":"#3a3a3a",borderColor:customDirection==="bulk"?"#1a1a1a":"#d0d0ce"}}>増量</button></div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>週あたり変化量 (kg/週)</p><input type="text" inputMode="decimal" value={customPace} onChange={e=>setCustomPace(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,marginBottom:12}}/><div style={{background:"#f8f8f6",borderRadius:4,padding:"10px 14px"}}><p style={{fontSize:9,color:"#7a7a7a"}}>{customDirection==="cut"?"減量":"増量"}方向: START({SW}kg) → {customDirection==="cut"?"-":"+"}{customPace} kg/週</p></div></div>)}
           </Card>
-          <Card style={{marginBottom:14}}><SL>TREND ANALYSIS</SL><TrendChart chartId="advisor" data={wkD} mode={chart} goalLine={chart==="weight"?weekGoalLine:null} issnLine={chart==="weight"?weekIssnLine:null} showLines={chart==="weight"} showIssn={showIssnLine}/>
+          <Card style={{marginBottom:14}}><SL>TREND ANALYSIS</SL><TrendChart chartId="advisor" data={wkD} mode={chart} goalLine={chart==="weight"?weekGoalLine:null} issnLine={chart==="weight"?weekIssnLine:null} issnUpper={chart==="weight"?weekIssnUpper:null} issnLower={chart==="weight"?weekIssnLower:null} showLines={chart==="weight"} showIssn={showIssnLine}/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,padding:"8px 0",borderTop:"1px solid #ebebea"}}><button onClick={()=>setWeekOffset(o=>o-1)} style={{...BS,fontSize:14,padding:"6px 14px",lineHeight:1}}>‹</button><div style={{textAlign:"center"}}><p style={{fontSize:10,fontWeight:700,color:"#1a1a1a"}}>{fmtDS(currentWeek.start)} — {fmtDS(currentWeek.end)}</p><p style={{fontSize:8,color:"#8a8a8a",letterSpacing:2,marginTop:2}}>{weekOffset===0?"今週":weekOffset===-1?"先週":`${Math.abs(weekOffset)}週前`}</p></div><button onClick={()=>{if(weekOffset<0)setWeekOffset(o=>o+1);}} disabled={weekOffset>=0} style={{...BS,fontSize:14,padding:"6px 14px",lineHeight:1,opacity:weekOffset>=0?0.3:1,cursor:weekOffset>=0?"not-allowed":"pointer"}}>›</button></div>
             <div style={{display:"flex",gap:4,marginTop:6}}><button onClick={()=>setChart("weight")} style={{...BS,fontSize:8,padding:"4px 10px",background:chart==="weight"?"#1a1a1a":"#fff",color:chart==="weight"?"#fff":"#3a3a3a"}}>体重</button><button onClick={()=>setChart("fat")} style={{...BS,fontSize:8,padding:"4px 10px",background:chart==="fat"?"#1a1a1a":"#fff",color:chart==="fat"?"#fff":"#3a3a3a"}}>体脂肪率</button></div>
             {paceMode==="custom"&&customDirection==="bulk"&&(<div style={{marginTop:12,background:"#fff8e1",border:"1px solid #ffe082",borderRadius:4,padding:"10px 14px"}}><p style={{fontSize:10,color:"#e65100",lineHeight:1.7}}>ISSNの破線は減量用の線のため、増量に使用出来ません。次のアップデートをお待ちください。</p></div>)}
@@ -311,12 +509,28 @@ function App(){
       {mDelConfirm&&(<Modal onClose={()=>setMDelConfirm(false)}><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>削除確認</p><p style={{fontSize:12,color:"#3a3a3a",marginBottom:20}}>「{mealSets[delTgtIdx]?.title}」を削除しますか？</p><div style={{display:"flex",gap:8}}><button onClick={()=>setMDelConfirm(false)} style={{...BS,flex:1,padding:"10px",fontSize:10,letterSpacing:2,color:"#8a8a8a",borderColor:"#ccc"}}>いいえ</button><button onClick={()=>{const n=[...mealSets];n.splice(delTgtIdx,1);setMealSets(n);setCurSetIdx(0);setMDelConfirm(false);setMMealSet(false);}} style={{...BP,flex:1,padding:"10px",fontSize:10,letterSpacing:3,background:"#d62828"}}>削除</button></div></Modal>)}
 
       {mResetConfirm&&(<Modal onClose={()=>setMResetConfirm(false)}><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>リセット確認</p><p style={{fontSize:12,color:"#3a3a3a",marginBottom:20}}>記入した項目をリセットしますか？</p><div style={{display:"flex",gap:8}}><button onClick={()=>setMResetConfirm(false)} style={{...BS,flex:1,padding:"10px",fontSize:10,letterSpacing:2,color:"#8a8a8a",borderColor:"#ccc"}}>いいえ</button><button onClick={()=>{const n=[...mealSets];n[resetTgtIdx]={title:"",meals:JSON.parse(JSON.stringify(EMPTY_MEALS))};setMealSets(n);setMResetConfirm(false);}} style={{...BP,flex:1,padding:"10px",fontSize:10,letterSpacing:3,background:"#d62828"}}>リセット</button></div></Modal>)}
+
+      {/* ═══ INFO MODAL (BMR/TDEE/BMI details) ═══ */}
+      {mInfo&&(<Modal onClose={()=>setMInfo(false)}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><div><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a"}}>詳細パラメーター</p><p style={{fontSize:10,color:"#7a7a7a",marginTop:3}}>Harris-Benedict 式に基づく計算値</p></div><button onClick={()=>setMInfo(false)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a5a5a",lineHeight:1}}>✕</button></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:20}}>{[{l:"BMR",v:Math.round(bmr)+" kcal",d:"基礎代謝量"},{l:"TDEE",v:Math.round(tdee)+" kcal",d:"活動代謝量"},{l:"BMI",v:calcBMI(W,heightNum).toFixed(1),d:"体格指数"}].map(s=>(<div key={s.l} style={{background:"#f8f8f6",borderRadius:6,padding:"14px 10px",textAlign:"center"}}><p style={{fontSize:8,letterSpacing:3,color:"#8a8a8a",marginBottom:6}}>{s.l}</p><p style={{fontSize:18,fontWeight:700,color:"#1a1a1a"}}>{s.v}</p><p style={{fontSize:9,color:"#7a7a7a",marginTop:4}}>{s.d}</p></div>))}</div><div style={{borderTop:"1px solid #ebebea",paddingTop:16}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>{[{l:"目標カロリー",v:aFC.calories+" kcal"},{l:"活動レベル",v:ACT[prof.activity]?.label||"—"},{l:"目標",v:prof.goal==="cut"?"カット (−500)":prof.goal==="bulk"?"バルク (+300)":prof.goal==="maintain"?"維持":"任意 ("+prof.goalCustom+")"},{l:"除脂肪体重",v:leanMass+" kg"}].map(s=>(<div key={s.l} style={{marginBottom:12}}><p style={{fontSize:9,color:"#8a8a8a",marginBottom:4}}>{s.l}</p><p style={{fontSize:12,fontWeight:700,color:"#2a2a2a"}}>{s.v}</p></div>))}</div></div><button onClick={()=>setMInfo(false)} style={{...BP,width:"100%",padding:"11px",fontSize:10,letterSpacing:3,marginTop:8}}>CLOSE</button></Modal>)}
+
+      {/* ═══ myセット PICKER MODAL (Step 1: select set → select meal) ═══ */}
+      {mSetPicker&&!mSetConfirm&&(<Modal onClose={()=>setMSetPicker(null)}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a"}}>myセットから読込</p><p style={{fontSize:10,color:"#7a7a7a",marginTop:3}}>セットを選び、食事をタップしてください</p></div><button onClick={()=>setMSetPicker(null)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#5a5a5a",lineHeight:1}}>✕</button></div>
+        {/* セット選択タブ */}
+        <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto"}}>{mealSets.map((s,si)=>(<button key={si} onClick={()=>setMSetPicker(prev=>({...prev,selSet:si}))} style={{...BS,fontSize:9,padding:"6px 12px",whiteSpace:"nowrap",background:(mSetPicker.selSet??0)===si?"#1a1a1a":"#fff",color:(mSetPicker.selSet??0)===si?"#fff":"#3a3a3a"}}>{s.title||`セット${si+1}`}</button>))}</div>
+        {/* 選択中セットの食事一覧 */}
+        <div style={{display:"flex",flexDirection:"column",gap:4}}>{mealSets[mSetPicker.selSet??0]?.meals.map((ml,mi)=>{const mp=parseFloat(ml.p)||0,mf=parseFloat(ml.f)||0,mc=parseFloat(ml.c)||0;const si=mSetPicker.selSet??0;return(<button key={mi} onClick={()=>setMSetConfirm({si,mi,mode:mSetPicker.mode,idx:mSetPicker.idx,label:ml.label,p:mp,f:mf,c:mc,setTitle:mealSets[si].title||`セット${si+1}`})} style={{...BS,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",fontSize:10,width:"100%",textAlign:"left"}}><span style={{fontWeight:600}}>{ml.label}</span><span style={{color:"#6a6a6a",fontSize:9}}>P:{mp}g  F:{mf}g  C:{mc}g</span></button>);})}</div>
+        <button onClick={()=>setMSetPicker(null)} style={{...BS,width:"100%",padding:"10px",fontSize:10,letterSpacing:2,marginTop:16,color:"#8a8a8a",borderColor:"#ccc",background:"transparent"}}>キャンセル</button></Modal>)}
+
+      {/* ═══ myセット CONFIRM MODAL (Step 2: confirm) ═══ */}
+      {mSetConfirm&&(<Modal onClose={()=>setMSetConfirm(null)}><p style={{fontSize:13,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>読込確認</p><p style={{fontSize:12,color:"#3a3a3a",marginBottom:8}}>「{mSetConfirm.setTitle}」の<strong>「{mSetConfirm.label}」</strong>を読み込みますか？</p><div style={{background:"#f8f8f6",borderRadius:4,padding:"10px 12px",marginBottom:20}}><p style={{fontSize:10,color:"#5a5a5a"}}>P: {mSetConfirm.p}g　F: {mSetConfirm.f}g　C: {mSetConfirm.c}g</p></div><div style={{display:"flex",gap:8}}><button onClick={()=>setMSetConfirm(null)} style={{...BS,flex:1,padding:"10px",fontSize:10,letterSpacing:2,color:"#8a8a8a",borderColor:"#ccc",background:"transparent"}}>キャンセル</button><button onClick={()=>{applyMealSet(mSetConfirm.si,mSetConfirm.mi,mSetConfirm.mode,mSetConfirm.idx);setMSetConfirm(null);setMSetPicker(null);}} style={{...BP,flex:1,padding:"10px",fontSize:10,letterSpacing:3,background:"#d62828"}}>はい</button></div></Modal>)}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
 </html>
-

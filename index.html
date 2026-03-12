@@ -1,4 +1,38 @@
-import { useState, useRef, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Diet Logic Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+#root{height:100%}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#f4f4f2}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+input[type=number]::-webkit-inner-spin-button{opacity:0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .35s ease forwards}
+.nb{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:3px;font-size:9px;padding:6px 12px;transition:color .15s}
+.nb:hover{color:#1a1a1a!important}
+@supports(padding:env(safe-area-inset-bottom)){
+  .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const {useState, useRef, useEffect} = React;
+
+
 
 /* ═══ Inject global styles ═══ */
 const GLOBAL_CSS = `*{box-sizing:border-box;margin:0;padding:0}
@@ -287,9 +321,38 @@ function App(){
   const lossPerWeek=(totalLoss/(totalDays/7)).toFixed(2);
 
   const computeGoalLine=(arr)=>{
-    /* 常に START DATE/WEIGHT → TARGET DATE/WEIGHT を結ぶ直線 */
+    if(paceMode==="custom"){
+      /* カスタム: START DATEからcustomPaceで直線、TARGET DATEに縛られない */
+      const pv=parseFloat(customPace)||0.75;
+      const sign=customDirection==="cut"?-1:1;
+      const dp=(pv/7)*sign;
+      return arr.map(d=>{const dDate=parseDate(d.date);const dfs=daysBtwn(sdObj,dDate);return SW+dp*dfs;});
+    }
+    /* デフォルト: START DATE/WEIGHT → TARGET DATE/WEIGHT を結ぶ直線 */
     return arr.map(d=>{const dDate=parseDate(d.date);const dfs=daysBtwn(sdObj,dDate);return SW+dailySlope*dfs;});
   };
+
+  /* ═══ カスタムペース: 目標体重到達予測日 ═══ */
+  const customArrivalDate=(()=>{
+    if(paceMode!=="custom")return null;
+    const pv=parseFloat(customPace)||0;
+    if(pv<=0)return null;
+    const diff=Math.abs(SW-TW);
+    const weeksNeeded=diff/pv;
+    const daysNeeded=Math.round(weeksNeeded*7);
+    const arrival=new Date(sdObj);
+    arrival.setDate(arrival.getDate()+daysNeeded);
+    return arrival;
+  })();
+
+  /* ═══ カスタムペース: ISSN推奨範囲外警告 ═══ */
+  const customPaceWarning=(()=>{
+    if(paceMode!=="custom"||customDirection!=="cut")return false;
+    const pv=parseFloat(customPace)||0;
+    /* ISSN推奨: 週0.5%〜1.0%の体重減。現在体重で1.0%を超えるかチェック */
+    const maxWeeklyKg=W*0.01;
+    return pv>maxWeeklyKg;
+  })();
   const computeIssnLine=(arr)=>{
     /* ISSN推奨ターゲット: 週あたり体重の0.7%減（複利） */
     return arr.map(d=>{const dDate=parseDate(d.date);const dfs=Math.max(0,daysBtwn(sdObj,dDate));return SW*Math.pow(1-0.007,dfs/7);});
@@ -471,7 +534,7 @@ function App(){
         {tab==="advisor"&&(<div className="fu"><p style={{fontSize:9,letterSpacing:4,color:"#8a8a8a",fontWeight:500,marginBottom:20}}>ADVISOR — ISSN / NSCA</p>
           <Card style={{marginBottom:14}}><SL>ペース設定</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}><button onClick={()=>setPaceMode("auto")} style={{...BS,background:paceMode==="auto"?"#1a1a1a":"#fff",color:paceMode==="auto"?"#fff":"#3a3a3a",fontSize:9,letterSpacing:2,padding:"10px"}}>オート（BMI連動）</button><button onClick={()=>setPaceMode("custom")} style={{...BS,background:paceMode==="custom"?"#1a1a1a":"#fff",color:paceMode==="custom"?"#fff":"#3a3a3a",fontSize:9,letterSpacing:2,padding:"10px"}}>カスタム（手動）</button></div>
             {paceMode==="auto"&&(<div style={{background:"#f8f8f6",borderRadius:4,padding:"12px 14px"}}><p style={{fontSize:9,color:"#7a7a7a",marginBottom:6}}>現在のBMI: <strong style={{color:"#1a1a1a"}}>{calcBMI(W,heightNum).toFixed(1)}</strong></p><p style={{fontSize:9,color:"#7a7a7a"}}>適用ペース: <strong style={{color:"#1a1a1a"}}>{calcBMI(W,heightNum)>=25?"0.75":"0.50"} kg/週</strong><span style={{fontSize:8,color:"#aaa",marginLeft:6}}>({calcBMI(W,heightNum)>=25?"BMI≥25":"BMI<25"})</span></p></div>)}
-            {paceMode==="custom"&&(<div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:8}}>方向</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}><button onClick={()=>setCustomDirection("cut")} style={{...BS,fontSize:10,letterSpacing:2,padding:"10px",background:customDirection==="cut"?"#1a1a1a":"#fff",color:customDirection==="cut"?"#fff":"#3a3a3a",borderColor:customDirection==="cut"?"#1a1a1a":"#d0d0ce"}}>減量</button><button onClick={()=>setCustomDirection("bulk")} style={{...BS,fontSize:10,letterSpacing:2,padding:"10px",background:customDirection==="bulk"?"#1a1a1a":"#fff",color:customDirection==="bulk"?"#fff":"#3a3a3a",borderColor:customDirection==="bulk"?"#1a1a1a":"#d0d0ce"}}>増量</button></div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>週あたり変化量 (kg/週)</p><input type="text" inputMode="decimal" value={customPace} onChange={e=>setCustomPace(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,marginBottom:12}}/><div style={{background:"#f8f8f6",borderRadius:4,padding:"10px 14px"}}><p style={{fontSize:9,color:"#7a7a7a"}}>{customDirection==="cut"?"減量":"増量"}方向: START({SW}kg) → {customDirection==="cut"?"-":"+"}{customPace} kg/週</p></div></div>)}
+            {paceMode==="custom"&&(<div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:8}}>方向</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}><button onClick={()=>setCustomDirection("cut")} style={{...BS,fontSize:10,letterSpacing:2,padding:"10px",background:customDirection==="cut"?"#1a1a1a":"#fff",color:customDirection==="cut"?"#fff":"#3a3a3a",borderColor:customDirection==="cut"?"#1a1a1a":"#d0d0ce"}}>減量</button><button onClick={()=>setCustomDirection("bulk")} style={{...BS,fontSize:10,letterSpacing:2,padding:"10px",background:customDirection==="bulk"?"#1a1a1a":"#fff",color:customDirection==="bulk"?"#fff":"#3a3a3a",borderColor:customDirection==="bulk"?"#1a1a1a":"#d0d0ce"}}>増量</button></div><p style={{fontSize:10,color:"#5a5a5a",fontWeight:600,marginBottom:6}}>週あたり変化量 (kg/週)</p><input type="text" inputMode="decimal" value={customPace} onChange={e=>setCustomPace(e.target.value.replace(/[^0-9.]/g,""))} style={{...IB,marginBottom:customPaceWarning?8:12}}/>{customPaceWarning&&(<p style={{fontSize:10,color:"#e63946",fontWeight:600,marginBottom:12,lineHeight:1.6}}>筋分解の恐れが高まる数値です。減量目標を見直してみませんか？</p>)}<div style={{background:"#f8f8f6",borderRadius:4,padding:"10px 14px"}}><p style={{fontSize:9,color:"#7a7a7a"}}>{customDirection==="cut"?"減量":"増量"}方向: START({SW}kg) → {customDirection==="cut"?"-":"+"}{customPace} kg/週</p>{customArrivalDate&&(<p style={{fontSize:9,color:"#1a1a1a",fontWeight:600,marginTop:6}}>目標体重到達予測日 {customArrivalDate.getFullYear()}年{customArrivalDate.getMonth()+1}月{customArrivalDate.getDate()}日頃</p>)}</div></div>)}
           </Card>
           <Card style={{marginBottom:14}}><SL>TREND ANALYSIS</SL><TrendChart chartId="advisor" data={wkD} mode={chart} goalLine={chart==="weight"?weekGoalLine:null} issnLine={chart==="weight"?weekIssnLine:null} issnUpper={chart==="weight"?weekIssnUpper:null} issnLower={chart==="weight"?weekIssnLower:null} showLines={chart==="weight"} showIssn={showIssnLine}/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,padding:"8px 0",borderTop:"1px solid #ebebea"}}><button onClick={()=>setWeekOffset(o=>o-1)} style={{...BS,fontSize:14,padding:"6px 14px",lineHeight:1}}>‹</button><div style={{textAlign:"center"}}><p style={{fontSize:10,fontWeight:700,color:"#1a1a1a"}}>{fmtDS(currentWeek.start)} — {fmtDS(currentWeek.end)}</p><p style={{fontSize:8,color:"#8a8a8a",letterSpacing:2,marginTop:2}}>{weekOffset===0?"今週":weekOffset===-1?"先週":`${Math.abs(weekOffset)}週前`}</p></div><button onClick={()=>{if(weekOffset<0)setWeekOffset(o=>o+1);}} disabled={weekOffset>=0} style={{...BS,fontSize:14,padding:"6px 14px",lineHeight:1,opacity:weekOffset>=0?0.3:1,cursor:weekOffset>=0?"not-allowed":"pointer"}}>›</button></div>
@@ -522,4 +585,10 @@ function App(){
   );
 }
 
-export default App;
+
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,390 @@
+```jsx
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+
+/* ==========================================
+   1. Constants & Global Styles
+========================================== */
+const LS_KEY = "dlp_state";
+
+const GLOBAL_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+  #root{height:100%}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:#f4f4f2}
+  ::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+  input[type=number]::-webkit-inner-spin-button{opacity:0}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
+  .fu{animation:fadeUp .35s ease forwards}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+`;
+
+const ACT_LEVELS = {
+  sedentary: { label: "座位中心", factor: 1.2 },
+  light: { label: "軽い運動（週1〜2回）", factor: 1.375 },
+  moderate: { label: "中程度（週3〜5回）", factor: 1.55 },
+  active: { label: "激しい運動（週6〜7回）", factor: 1.725 },
+  veryActive: { label: "毎日の激しい運動", factor: 1.9 },
+};
+
+const MOCK_DATA = [
+  { date: "2026/01/26", weight: 77.0, fat: 22.5, hicarb: false },
+  { date: "2026/01/27", weight: 76.8, fat: 22.4, hicarb: false },
+  // ... (モックデータは必要に応じて追加してください)
+];
+
+/* ==========================================
+   2. Utilities (Pure Functions)
+========================================== */
+const Utils = {
+  calcBMR: (weight, height, age, sex) =>
+    sex === "male"
+      ? 10 * weight + 6.25 * height - 5 * age + 5
+      : 10 * weight + 6.25 * height - 5 * age - 161,
+      
+  calcTDEE: (bmr, actLevel) => bmr * (ACT_LEVELS[actLevel]?.factor ?? 1.55),
+  
+  calcPFC: (tdee, goal, leanMass, pPct = 30, fPct = 25, customCal = "") => {
+    let cal = tdee;
+    if (goal === "cut") cal = tdee - 500;
+    else if (goal === "bulk") cal = tdee + 300;
+    else if (goal === "custom" && customCal) {
+      const n = parseFloat(customCal);
+      if (!isNaN(n)) cal = tdee + n;
+    }
+    const p = pPct ? (cal * pPct) / 100 / 4 : leanMass ? leanMass * 2.2 : (cal * 0.3) / 4;
+    const f = fPct ? (cal * fPct) / 100 / 9 : (cal * 0.25) / 9;
+    const c = Math.max(0, (cal - p * 4 - f * 9) / 4);
+    
+    return {
+      calories: Math.round(cal),
+      protein: Math.round(p),
+      fat: Math.round(f),
+      carbs: Math.round(c),
+    };
+  },
+  
+  calcBMI: (weight, height) => weight / (height / 100) ** 2,
+  
+  formatDate: (d) => `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`,
+  
+  parseDateString: (ds) => {
+    if (!ds) return new Date();
+    const p = ds.split("/");
+    return p.length === 3 ? new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2])) : new Date();
+  },
+  
+  injectStyles: () => {
+    if (typeof document === "undefined") return;
+    if (!document.getElementById("dlp-global-styles")) {
+      const style = document.createElement("style");
+      style.id = "dlp-global-styles";
+      style.textContent = GLOBAL_CSS;
+      document.head.appendChild(style);
+    }
+  }
+};
+
+/* ==========================================
+   3. Custom Hooks (State & Business Logic)
+========================================== */
+function useDietState() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Grouped States
+  const [profile, setProfile] = useState({
+    height: "170", age: "30", sex: "male", activity: "moderate",
+    goal: "cut", goalCustom: "", weight: ""
+  });
+  const [logs, setLogs] = useState(MOCK_DATA);
+  const [settings, setSettings] = useState({ calcMode: "auto", macroView: "pct" });
+  const [uiState, setUiState] = useState({ activeTab: "dashboard", modal: null });
+
+  // Input states (Transient)
+  const [todayInput, setTodayInput] = useState({ weight: "", fat: "" });
+
+  // 1. Initial Load from LocalStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.profile) setProfile(parsed.profile);
+        if (parsed.logs) setLogs(parsed.logs);
+        if (parsed.settings) setSettings(parsed.settings);
+      }
+    } catch (e) {
+      console.error("Failed to load state", e);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // 2. Debounced Auto-Save to LocalStorage
+  useEffect(() => {
+    if (!isLoaded) return;
+    const timer = setTimeout(() => {
+      const stateToSave = { profile, logs, settings };
+      localStorage.setItem(LS_KEY, JSON.stringify(stateToSave));
+    }, 500); // 500msのデバウンスでパフォーマンスを最適化
+    
+    return () => clearTimeout(timer);
+  }, [profile, logs, settings, isLoaded]);
+
+  // 3. Derived Data (Memoized for performance)
+  const derivedData = useMemo(() => {
+    const latestLog = [...logs].reverse().find(d => d.weight !== null) || {};
+    const currentWeight = parseFloat(profile.weight) || latestLog.weight || 75;
+    const currentFat = latestLog.fat || 20;
+    
+    const heightNum = parseFloat(profile.height) || 170;
+    const ageNum = parseFloat(profile.age) || 30;
+    const leanMass = currentWeight * (1 - currentFat / 100);
+    
+    const bmr = Utils.calcBMR(currentWeight, heightNum, ageNum, profile.sex);
+    const tdee = Utils.calcTDEE(bmr, profile.activity);
+    const pfcTargets = Utils.calcPFC(tdee, profile.goal, leanMass);
+
+    return {
+      currentWeight, currentFat, leanMass, bmr, tdee, pfcTargets
+    };
+  }, [profile, logs]);
+
+  // 4. Actions
+  const recordToday = useCallback(() => {
+    const { weight, fat } = todayInput;
+    if (!weight && !fat) return;
+    
+    const todayStr = Utils.formatDate(new Date());
+    setLogs(prev => {
+      const existingIdx = prev.findIndex(d => d.date === todayStr);
+      const newEntry = {
+        date: todayStr,
+        weight: weight ? parseFloat(weight) : null,
+        fat: fat ? parseFloat(fat) : null,
+        hicarb: false
+      };
+      
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = { ...updated[existingIdx], ...newEntry };
+        return updated;
+      }
+      return [...prev, newEntry].sort((a, b) => a.date.localeCompare(b.date));
+    });
+    
+    setTodayInput({ weight: "", fat: "" });
+  }, [todayInput]);
+
+  return {
+    profile, setProfile,
+    logs, setLogs,
+    settings, setSettings,
+    uiState, setUiState,
+    todayInput, setTodayInput,
+    derivedData,
+    actions: { recordToday }
+  };
+}
+
+/* ==========================================
+   4. Reusable UI Components
+========================================== */
+const styles = {
+  inputBase: {
+    fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 500,
+    color: "#1a1a1a", background: "#f8f8f6", border: "1px solid #e0e0de",
+    borderRadius: 4, padding: "8px 12px", width: "100%", outline: "none"
+  },
+  btnPrimary: {
+    fontFamily: "'DM Mono', monospace", background: "#1a1a1a", color: "#fff",
+    border: "none", borderRadius: 4, cursor: "pointer", fontWeight: 600, padding: "8px 14px"
+  },
+  btnSecondary: {
+    fontFamily: "'DM Mono', monospace", background: "#fff", color: "#3a3a3a",
+    border: "1px solid #d0d0ce", borderRadius: 4, cursor: "pointer", fontWeight: 600, padding: "8px 14px"
+  }
+};
+
+const Card = ({ children, style = {} }) => (
+  <div style={{ background: "#fff", border: "1px solid #e0e0de", borderRadius: 6, padding: "20px 22px", marginBottom: 14, ...style }}>
+    {children}
+  </div>
+);
+
+const SectionLabel = ({ children }) => (
+  <p style={{ fontSize: 9, letterSpacing: 4, color: "#8a8a8a", fontWeight: 500, marginBottom: 16 }}>{children}</p>
+);
+
+// SVG components should be cleanly separated
+const MacroRing = React.memo(({ protein, fat, carbs }) => {
+  const total = protein * 4 + fat * 9 + carbs * 4;
+  if (!total) return null;
+  
+  const pP = (protein * 4) / total;
+  const pF = (fat * 9) / total;
+  const R = 48, cx = 56, cy = 56, sw = 11, circ = 2 * Math.PI * R;
+  let off = 0;
+  
+  return (
+    <svg width="112" height="112" style={{ flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={R} fill="none" stroke="#ebebea" strokeWidth={sw} />
+      {[
+        { pct: pP, c: "#1a1a1a" },
+        { pct: pF, c: "#6a6a6a" },
+        { pct: 1 - pP - pF, c: "#c8c8c6" }
+      ].map((s, i) => {
+        const dash = s.pct * circ;
+        const el = (
+          <circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={s.c} strokeWidth={sw}
+            strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-off * circ}
+            style={{ transform: "rotate(-90deg)", transformOrigin: `${cx}px ${cy}px` }} />
+        );
+        off += s.pct;
+        return el;
+      })}
+      <text x={cx} y={cy - 5} textAnchor="middle" fill="#1a1a1a" fontSize="13" fontWeight="600">{Math.round(total)}</text>
+      <text x={cx} y={cy + 11} textAnchor="middle" fill="#6a6a6a" fontSize="9">kcal</text>
+    </svg>
+  );
+});
+
+/* ==========================================
+   5. Feature Components
+========================================== */
+const DashboardTab = ({ store }) => {
+  const { todayInput, setTodayInput, derivedData, actions } = store;
+  
+  return (
+    <div className="fu">
+      <Card>
+        <SectionLabel>TODAY'S LOG</SectionLabel>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>体重 (kg)</p>
+            <input type="text" inputMode="decimal" placeholder={derivedData.currentWeight.toString()} 
+                   value={todayInput.weight} onChange={e => setTodayInput(p => ({ ...p, weight: e.target.value.replace(/[^0-9.]/g, "") }))} 
+                   style={{ ...styles.inputBase, fontSize: 20, fontWeight: 700 }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>体脂肪率 (%)</p>
+            <input type="text" inputMode="decimal" placeholder={derivedData.currentFat.toString()} 
+                   value={todayInput.fat} onChange={e => setTodayInput(p => ({ ...p, fat: e.target.value.replace(/[^0-9.]/g, "") }))} 
+                   style={{ ...styles.inputBase, fontSize: 20, fontWeight: 700 }} />
+          </div>
+          <button onClick={actions.recordToday} style={{ ...styles.btnPrimary, fontSize: 9, opacity: (todayInput.weight || todayInput.fat) ? 1 : 0.35 }}>
+            記録
+          </button>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionLabel>DAILY MACROS (Auto)</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <MacroRing protein={derivedData.pfcTargets.protein} fat={derivedData.pfcTargets.fat} carbs={derivedData.pfcTargets.carbs} />
+          <div style={{ flex: 1 }}>
+            {/* Displaying extracted calculation logic cleanly */}
+            {Object.entries({
+              "PROTEIN": { v: derivedData.pfcTargets.protein, c: "#1a1a1a" },
+              "FAT": { v: derivedData.pfcTargets.fat, c: "#6a6a6a" },
+              "CARBS": { v: derivedData.pfcTargets.carbs, c: "#b8b8b6" }
+            }).map(([label, data]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 600, color: "#5a5a5a" }}>{label}</span>
+                <strong style={{ color: data.c }}>{data.v}g</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+const ProfileTab = ({ store }) => {
+  const { profile, setProfile } = store;
+  
+  const handleProfileChange = (key, value) => {
+    setProfile(prev => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="fu">
+      <Card>
+        <SectionLabel>PROFILE & CALCULATION SETTINGS</SectionLabel>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 600, marginBottom: 6 }}>身長(cm)</p>
+            <input type="text" value={profile.height} onChange={e => handleProfileChange("height", e.target.value.replace(/[^0-9]/g, ""))} style={styles.inputBase} />
+          </div>
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 600, marginBottom: 6 }}>年齢</p>
+            <input type="text" value={profile.age} onChange={e => handleProfileChange("age", e.target.value.replace(/[^0-9]/g, ""))} style={styles.inputBase} />
+          </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <p style={{ fontSize: 10, fontWeight: 600, marginBottom: 8 }}>活動量</p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {Object.entries(ACT_LEVELS).map(([k, v]) => (
+                <button key={k} onClick={() => handleProfileChange("activity", k)} 
+                        style={{ ...styles.btnSecondary, background: profile.activity === k ? "#1a1a1a" : "#fff", color: profile.activity === k ? "#fff" : "#2a2a2a", fontSize: 9 }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+/* ==========================================
+   6. Main App Component
+========================================== */
+export default function App() {
+  // Inject global CSS once
+  useEffect(() => { Utils.injectStyles(); }, []);
+
+  // Initialize unified store
+  const store = useDietState();
+  const { uiState, setUiState } = store;
+
+  const TABS = [
+    { id: "dashboard", label: "DASH", component: DashboardTab },
+    { id: "calc", label: "PROFILE", component: ProfileTab }
+    // Add SuppsTab, AdvisorTab etc. here
+  ];
+
+  const ActiveTabComponent = TABS.find(t => t.id === uiState.activeTab)?.component || DashboardTab;
+
+  return (
+    <div style={{ maxWidth: 540, margin: "0 auto", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f4f4f2" }}>
+      
+      {/* Header */}
+      <header style={{ background: "#1a1a1a", padding: "18px 22px 14px", flexShrink: 0 }}>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: "#fff", letterSpacing: 2 }}>
+          Diet Logic <span style={{ color: "#6a6a6a" }}>Pro</span>
+        </h1>
+      </header>
+
+      {/* Navigation */}
+      <nav className="safe-b" style={{ display: "flex", background: "#fff", borderBottom: "1px solid #e0e0de", position: "sticky", top: 0, zIndex: 100 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setUiState(prev => ({ ...prev, activeTab: t.id }))}
+            style={{ flex: 1, padding: "14px 8px", background: "none", border: "none", borderBottom: uiState.activeTab === t.id ? "2px solid #1a1a1a" : "2px solid transparent", color: uiState.activeTab === t.id ? "#1a1a1a" : "#b0b0ae", fontWeight: uiState.activeTab === t.id ? 700 : 400, cursor: "pointer", transition: "all .15s" }}>
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Main Content Area */}
+      <main style={{ flex: 1, padding: "20px 16px 32px", overflowY: "auto" }}>
+        <ActiveTabComponent store={store} />
+      </main>
+
+    </div>
+  );
+}
+
+```

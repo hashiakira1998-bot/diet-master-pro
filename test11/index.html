@@ -1,3 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Diet Master Pro</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // 1行目の import はブラウザでは動かないので、代わりにこれでReactの機能を使えるようにします
+        const { useState, useRef, useEffect, useMemo } = React;
 import { useState, useRef, useEffect, useMemo } from "react";
 
 /* ═══ Inject global styles ═══ */
@@ -928,3 +943,8 @@ function App() {
 }
 
 export default App;
+const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

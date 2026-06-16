@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>Diet Master Pro</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        // 1行目の import はブラウザでは動かないので、代わりにこれでReactの機能を使えるようにします
-        const { useState, useRef, useEffect, useMemo } = React;
-import { useState, useRef, useEffect, useMemo } from "react";
-
-/* ═══ Inject global styles ═══ */
-const GLOBAL_CSS = `
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Diet Logic Pro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+#root{height:100%}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#f4f4f2}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+input[type=number]::-webkit-inner-spin-button{opacity:0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .35s ease forwards}
+.nb{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:3px;font-size:9px;padding:6px 12px;transition:color .15s}
+.nb:hover{color:#1a1a1a!important}
+@supports(padding:env(safe-area-inset-bottom)){
+  .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
 *{box-sizing:border-box;margin:0;padding:0}
 html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
@@ -942,9 +946,7 @@ function App() {
   );
 }
 
-export default App;
-const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
 </body>
 </html>

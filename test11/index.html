@@ -1,952 +1,606 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Diet Logic Pro</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
-body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
-#root{height:100%}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:#f4f4f2}
-::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
-input[type=number]::-webkit-inner-spin-button{opacity:0}
-input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.fu{animation:fadeUp .35s ease forwards}
-.nb{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:3px;font-size:9px;padding:6px 12px;transition:color .15s}
-.nb:hover{color:#1a1a1a!important}
-@supports(padding:env(safe-area-inset-bottom)){
-  .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
-*{box-sizing:border-box;margin:0;padding:0}
-html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
-body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
-#root{height:100%}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:#f4f4f2}
-::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
-input[type=number]::-webkit-inner-spin-button{opacity:0}
-input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.fu{animation:fadeUp .35s ease forwards}
-.nb{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:3px;font-size:9px;padding:6px 12px;transition:color .15s}
-.nb:hover{color:#1a1a1a!important}
-@supports(padding:env(safe-area-inset-bottom)){
-  .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
-}`;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Diet Master Pro</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
 
-function injectGlobalStyles() {
-  if (typeof document === "undefined") return;
-  if (!document.getElementById("dlp-global-styles")) {
-    const style = document.createElement("style");
-    style.id = "dlp-global-styles";
-    style.textContent = GLOBAL_CSS;
-    document.head.appendChild(style);
-  }
-  if (!document.getElementById("dlp-google-fonts")) {
-    const link = document.createElement("link");
-    link.id = "dlp-google-fonts";
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap";
-    document.head.appendChild(link);
-  }
-}
+    <script type="text/babel">
+        // ブラウザ実行環境用のマッピング（元のimport文の代わり）
+        const { useState, useRef, useEffect, useMemo } = React;
 
-/* ═══ localStorage helpers ═══ */
-const LS_KEY = "dlp_state";
-const loadLS = () => { try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } };
-const saveLS = (obj) => { try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch (e) { } };
+        /* === Inject global styles === */
+        const GLOBAL_CSS = `
+        *{box-sizing:border-box;margin:0;padding:0}
+        html{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+        body{height:100%;font-family:'DM Mono',monospace;background:#f4f4f2;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+        #root{height:100%}
+        ::-webkit-scrollbar{width:4px;height:4px}
+        ::-webkit-scrollbar-track{background:#f4f4f2}
+        ::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+        input[type=number]::-webkit-inner-spin-button{opacity:0}
+        input:focus,select:focus,textarea:focus{outline:none;border-color:#1a1a1a!important}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .fu{animation:fadeUp .35s ease forwards}
+        .nb{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:3px;font-size:9px;padding:6px 12px;transition:color .15s}
+        .nb:hover{color:#1a1a1a!important}
+        @supports(padding:env(safe-area-inset-bottom)){
+          .safe-b{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+        } `;
 
-/* ═══ UTILITIES ═══ */
-const calcBMR = (w, h, a, s) => s === "male" ? (10 * w) + (6.25 * h) - (5 * a) + 5 : (10 * w) + (6.25 * h) - (5 * a) - 161;
-const ACT = { sedentary: { label: "座位中心", factor: 1.2 }, light: { label: "軽い運動（週1〜2回）", factor: 1.375 }, moderate: { label: "中程度（週3〜5回）", factor: 1.55 }, active: { label: "激しい運動（週6〜7回）", factor: 1.725 }, veryActive: { label: "毎日の激しい運動", factor: 1.9 } };
-const calcTDEE = (bmr, act) => bmr * (ACT[act]?.factor ?? 1.55);
-const calcPFC = (tdee, goal, lean, pPct = 30, fPct = 25, custom = "") => {
-  let cal = tdee;
-  if (goal === "cut") cal = tdee - 500;
-  else if (goal === "bulk") cal = tdee + 300;
-  else if (goal === "custom" && custom) { const n = parseFloat(custom); if (!isNaN(n)) cal = tdee + n; }
-  const p = pPct ? (cal * pPct) / 100 / 4 : lean ? lean * 2.2 : (cal * 0.3) / 4;
-  const f = fPct ? (cal * fPct) / 100 / 9 : (cal * 0.25) / 9;
-  const c = Math.max(0, (cal - p * 4 - f * 9) / 4);
-  return { calories: Math.round(cal), protein: Math.round(p), fat: Math.round(f), carbs: Math.round(c) };
-};
-const calcBMI = (w, h) => w / ((h / 100) ** 2);
-const parseDate = (ds) => {
-  if (!ds || typeof ds !== "string") return new Date();
-  const p = ds.split("/");
-  if (p.length === 3) { const d = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2])); return isNaN(d) ? new Date() : d; }
-  const [m, d] = p; const y = new Date().getFullYear(); const dt = new Date(y, parseInt(m) - 1, parseInt(d));
-  if (isNaN(dt)) return new Date();
-  if (dt > new Date()) dt.setFullYear(y - 1);
-  return dt;
-};
-const parseISO = (s) => { const d = new Date(s); return isNaN(d) ? new Date() : d; };
-const daysBtwn = (a, b) => Math.round((b - a) / 86400000);
-const getWeekRange = (date) => { const d = new Date(date); const day = d.getDay(); const sun = new Date(d); sun.setDate(d.getDate() - day); const sat = new Date(sun); sat.setDate(sun.getDate() + 6); return { start: sun, end: sat }; };
-const fmtDS = (d) => `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
-const fmtShort = (ds) => { if (!ds) return ""; const p = ds.split("/"); return p.length === 3 ? p[1] + "/" + p[2] : ds; };
+        function injectGlobalStyles() {
+            if (typeof document === "undefined") return;
+            if (!document.getElementById("dlp-global-styles")) {
+                const style = document.createElement("style");
+                style.id = "dlp-global-styles";
+                style.textContent = GLOBAL_CSS;
+                document.head.appendChild(style);
+            }
+            if (!document.getElementById("dlp-google-fonts")) {
+                const link = document.createElement("link");
+                link.id = "dlp-google-fonts";
+                link.rel = "stylesheet";
+                link.href = "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700&display=swap";
+                document.head.appendChild(link);
+            }
+        }
 
-const MOCK = [{ date: "2026/01/26", weight: 77.0, fat: 22.5, hicarb: false }, { date: "2026/01/27", weight: 76.8, fat: 22.4, hicarb: false }, { date: "2026/01/28", weight: 76.6, fat: 22.3, hicarb: false }, { date: "2026/01/29", weight: null, fat: null, hicarb: false }, { date: "2026/01/30", weight: 76.5, fat: 22.2, hicarb: false }, { date: "2026/01/31", weight: 76.3, fat: 22.1, hicarb: false }, { date: "2026/02/01", weight: 76.2, fat: 22.1, hicarb: false }, { date: "2026/02/02", weight: 76.0, fat: 22.0, hicarb: false }, { date: "2026/02/03", weight: 75.8, fat: 21.8, hicarb: false }, { date: "2026/02/04", weight: null, fat: null, hicarb: false }, { date: "2026/02/05", weight: 75.6, fat: 21.7, hicarb: false }, { date: "2026/02/06", weight: 75.5, fat: 21.6, hicarb: false }, { date: "2026/02/07", weight: 75.4, fat: 21.5, hicarb: false }, { date: "2026/02/08", weight: 75.3, fat: 21.4, hicarb: true }, { date: "2026/02/09", weight: 75.1, fat: 21.2, hicarb: false }, { date: "2026/02/10", weight: 75.0, fat: 21.1, hicarb: false }, { date: "2026/02/11", weight: null, fat: null, hicarb: false }, { date: "2026/02/12", weight: 74.9, fat: 21.0, hicarb: false }, { date: "2026/02/13", weight: 74.8, fat: 21.0, hicarb: false }, { date: "2026/02/14", weight: 74.7, fat: 20.9, hicarb: false }, { date: "2026/02/15", weight: 74.5, fat: 20.8, hicarb: false }, { date: "2026/02/16", weight: 74.4, fat: 20.7, hicarb: false }, { date: "2026/02/17", weight: 74.2, fat: 20.5, hicarb: false }, { date: "2026/02/18", weight: 74.1, fat: 20.4, hicarb: false }, { date: "2026/02/19", weight: 74.0, fat: 20.3, hicarb: false }];
+        /* === localStorage helpers === */
+        const LS_KEY = "dlp_state";
+        const loadLS = () => { try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } };
+        const saveLS = (obj) => { try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch (e) { } };
 
-const ADVICE_MSGS = { purple: ["🚨 減量ペースが週1.0%を超えています。急激な体重減少は筋肉量（除脂肪体重）の分解を伴うリスクが高いため、摂取カロリーの引き上げを検討してください。", "🚨 2週連続で過剰な減量ペースです。エネルギー不足によるカタボリック状態（筋分解）を避けるため、即座にカロリー欠損幅を縮小させてください。", "🚨 深刻なペースオーバーです。体脂肪ではなく体内水分や糖質の激しい枯渇、あるいは過度な食事制限の可能性があります。食事制限を緩めてください。"], yellow: ["⚠️ 体重が均衡しています。NEAT（非運動性活動熱産生）を意識しましょう。", "⚠️ ペースが鈍化しています。塩分摂取による水分保持の可能性もありますが、PFCの再確認を推奨します。", "⚠️ 2週連続で理想ペースを下回っています。食事ログの見直し、隠れカロリーを再チェックしてください。", "⚠️ ペース鈍化が続いています。有酸素のボリュームを15〜20分追加する検討も有効です。", "⚠️ 3週以上ペースが鈍化。2〜3日のリフィードを挟んで代謝をリセットしましょう。", "⚠️ 長期停滞。ダイエットブレイク（1〜2週間メンテナンス）を実施し、ホルモンバランスの回復を推奨します。"], red: ["🛑 理論値との乖離が拡大。5-10%のカロリー調整を検討してください。", "🛑 代謝適応の可能性。リフィード（ハイカーボ）を入れて代謝に刺激を。", "🛑 2週連続の警告。PFCバランスの再計算と食事記録の正確性を見直してください。", "🛑 TDEEの活動レベル設定が実態と合っているか確認しましょう。", "🛑 3週以上の警告。ダイエットブレイクを取り再開プランを検討してください。", "🛑 深刻な停滞。専門家への相談を推奨します。"] };
-const CALORIE_DEFICIT_MSGS = { green: "現在のカロリー赤字は非常に安全な範囲内です。国際スポーツ栄養学会（ISSN）の基準においても、筋肉量（除脂肪体重）やトレーニングパフォーマンスを最大限に維持しながら、体脂肪のみを狙って落とせる最も理想的なペースです。このままのPFCバランスを維持して継続しましょう。", yellow: "⚠️ カロリーの赤字幅がやや大きくなり、注意が必要な領域に入り始めています。体脂肪の減少スピードは上がりますが、十分なタンパク質摂取と強度の高いレジスタンストレーニングを行わないと、脂肪と一緒に筋肉も分解（カタボリック）され始めるリスクがあります。疲労感や扱える重量の低下に注意してください。", red: "🛑 危険な減量幅に達しています。エネルギーアベイラビリティ（利用可能エネルギー）が低下しており、生体が『飢餓状態』を察知し始めるラインです。この状態を数日以上続けると、筋肉量の著しい減少、ホルモンバランスの乱れ、および代謝適応（停滞期の早期到来）を招くリスクが極めて高くなります。カロリーの引き上げを強く推奨します。", purple: "🚨 【警告】今すぐ食事制限を緩和し、カロリー赤字幅を縮小させてください。基礎代謝を大幅に割り込む致命的なエネルギー不足です。体脂肪の減少は完全に頭打ちになり、生体維持のために筋肉の分解（重度のカタボリック）が最優先で進んでしまいます。また、免疫力の低下や深刻な無気力感を引き起こします。今すぐ安全なカロリー幅まで摂取カロリーを引き上げてください。" };
-const EMPTY_MEALS = [{ label: "起床後", labelEn: "WAKING UP", desc: "", p: "", f: "", c: "" }, { label: "朝ご飯", labelEn: "MORNING", desc: "", p: "", f: "", c: "" }, { label: "昼ご飯", labelEn: "LUNCH", desc: "", p: "", f: "", c: "" }, { label: "晩ご飯", labelEn: "DINNER", desc: "", p: "", f: "", c: "" }, { label: "トレーニング", labelEn: "WORKOUT", desc: "", p: "", f: "", c: "" }, { label: "就寝前", labelEn: "PRE-BED", desc: "", p: "", f: "", c: "" }, { label: "その他1", labelEn: "OTHER 1", desc: "", p: "", f: "", c: "", editable: true }, { label: "その他2", labelEn: "OTHER 2", desc: "", p: "", f: "", c: "", editable: true }];
+        /* === UTILITIES === */
+        const calcBMR = (w, h, a, s) => s === "male" ? (10 * w) + (6.25 * h) - (5 * a) + 5 : (10 * w) + (6.25 * h) - (5 * a) - 161;
+        const ACT = {
+            sedentary: { label: "座位中心", factor: 1.2 },
+            light: { label: "軽い運動(1〜2回)", factor: 1.375 },
+            moderate: { label: "中程度(3〜5回)", factor: 1.55 },
+            active: { label: "激しい運動(6〜7回)", factor: 1.725 },
+            veryActive: { label: "毎日の激しい運動", factor: 1.9 }
+        };
+        const calcTDEE = (bmr, act) => bmr * (ACT[act] ? ACT[act].factor : 1.55);
+        const calcPFC = (tdee, goal, lean, pPct = 30, fPct = 25, custom = "") => {
+            let cal = tdee;
+            if (goal === "cut") cal = tdee - 500;
+            else if (goal === "bulk") cal = tdee + 300;
+            else if (goal === "custom" && custom) {
+                const n = parseFloat(custom);
+                if (!isNaN(n)) cal = tdee + n;
+            }
+            const p = pPct ? (cal * pPct) / 100 / 4 : lean * 2.2;
+            const f = fPct ? (cal * fPct) / 100 / 9 : (cal * 0.25) / 9;
+            const c = Math.max(0, (cal - p * 4 - f * 9) / 4);
+            return { calories: Math.round(cal), protein: Math.round(p), fat: Math.round(f), carbs: Math.round(c) };
+        };
+        const calcBMI = (w, h) => w / ((h / 100) ** 2);
+        const parseDate = (ds) => {
+            if (!ds || typeof ds !== "string") return new Date();
+            const p = ds.split("/");
+            if (p.length === 3) {
+                const d = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+                return isNaN(d) ? new Date() : d;
+            }
+            return new Date();
+        };
+        const p2Str = (d) => {
+            const y = d.getFullYear();
+            const m = d.getMonth() + 1;
+            const p = d.getDate();
+            const const_dt = new Date(y, m - 1, p);
+            if (isNaN(const_dt)) return new Date();
+            if (d > const_dt) d.setFullYear(y - 1);
+            return d;
+        };
+        const parseISO = (s) => {
+            const d = new Date(s);
+            return isNaN(d) ? new Date() : d;
+        };
+        const daysBtwn = (a, b) => Math.round(Math.abs(a - b) / 86400000);
+        const getWeekRange = (date) => {
+            const d = new Date(date);
+            const day = d.getDay();
+            const sun = new Date(d);
+            sun.setDate(d.getDate() - day);
+            const sat = new Date(sun);
+            sat.setDate(sun.getDate() + 6);
+            return { start: sun, end: sat };
+        };
+        const fmtDS = (d) => `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+        const fmtShort = (ds) => {
+            if (!ds) return "";
+            const p = ds.split("/");
+            return p.length === 3 ? `${p[1]}/${p[2]}` : ds;
+        };
 
-/* ═══ COMPONENTS ═══ */
-function TrendChart({ data, mode, onClickDate, goalLine, issnLine, issnUpper, issnLower, showLines, showIssn = true, chartId = "main" }) {
-  if (!data || !data.length) return (<div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "#bbb", fontSize: 11 }}>データなし</div>);
-  const label = mode === "weight" ? "weight" : "fat", unit = mode === "weight" ? "kg" : "%", step = mode === "weight" ? 1 : 0.5, lineColor = mode === "weight" ? "#1a1a1a" : "#5a7a5a";
-  const scrollRef = useRef(null);
-  const vals = data.map(d => d[label]), filled = []; let last = null;
-  vals.forEach(v => { if (v !== null) { last = v; filled.push(v); } else filled.push(last); });
-  const nonNull = filled.filter(v => v !== null);
-  if (!nonNull.length) return (<div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "#bbb", fontSize: 11 }}>データなし</div>);
-  const actualMin = Math.min(...nonNull), actualMax = Math.max(...nonNull);
-  const actualCenter = (actualMin + actualMax) / 2;
-  let rangeMin = actualMin, rangeMax = actualMax;
+        const MOCK = [
+            { date: "2026/01/26", weight: 77.0, fat: 22.5, hicarb: false },
+            { date: "2026/01/27", weight: 76.8, fat: 22.4, hicarb: false },
+            { date: "2026/01/28", weight: 76.6, fat: 22.3, hicarb: false },
+            { date: "2026/01/29", weight: 76.5, fat: null, hicarb: false },
+            { date: "2026/01/30", weight: 76.5, fat: 22.2, hicarb: false },
+            { date: "2026/01/31", weight: 76.3, fat: 22.1, hicarb: false },
+            { date: "2026/02/01", weight: 76.2, fat: 22.1, hicarb: false },
+            { date: "2026/02/02", weight: 76.0, fat: 22.0, hicarb: false },
+            { date: "2026/02/03", weight: 75.8, fat: 21.8, hicarb: false },
+            { date: "2026/02/04", weight: null, fat: null, hicarb: false },
+            { date: "2026/02/05", weight: 75.6, fat: 21.7, hicarb: false },
+            { date: "2026/02/06", weight: 75.5, fat: 21.6, hicarb: false },
+            { date: "2026/02/07", weight: 75.4, fat: 21.5, hicarb: false },
+            { date: "2026/02/08", weight: 75.3, fat: 21.4, hicarb: true },
+            { date: "2026/02/09", weight: 75.1, fat: 21.2, hicarb: false },
+            { date: "2026/02/10", weight: 75.0, fat: 21.1, hicarb: false },
+            { date: "2026/02/11", weight: null, fat: null, hicarb: false },
+            { date: "2026/02/12", weight: 74.9, fat: 21.0, hicarb: false },
+            { date: "2026/02/13", weight: 74.8, fat: 21.0, hicarb: false },
+            { date: "2026/02/14", weight: 74.7, fat: 20.9, hicarb: false },
+            { date: "2026/02/15", weight: 74.5, fat: 20.8, hicarb: false },
+            { date: "2026/02/16", weight: 74.4, fat: 20.7, hicarb: false },
+            { date: "2026/02/17", weight: 74.2, fat: 20.5, hicarb: false },
+            { date: "2026/02/18", weight: 74.1, fat: 20.4, hicarb: false },
+            { date: "2026/02/19", weight: 74.0, fat: 20.3, hicarb: false }
+        ];
 
-  if (showLines) {
-    const allLineVals = [];
-    if (goalLine) goalLine.forEach(v => { if (v >= actualCenter - 5 && v <= actualCenter + 5) allLineVals.push(v); });
-    if (showIssn && issnLine) issnLine.forEach(v => { if (v >= actualCenter - 5 && v <= actualCenter + 5) allLineVals.push(v); });
-    if (showIssn && issnUpper) issnUpper.forEach(v => { if (v >= actualCenter - 5 && v <= actualCenter + 5) allLineVals.push(v); });
-    if (showIssn && issnLower) issnLower.forEach(v => { if (v >= actualCenter - 5 && v <= actualCenter + 5) allLineVals.push(v); });
-    if (allLineVals.length) { rangeMin = Math.min(rangeMin, ...allLineVals); rangeMax = Math.max(rangeMax, ...allLineVals); }
-  }
+        const ADVICE_MSGS = {
+            purple: [
+                "減量ペースが週1.0%を超えています。急激な体重減少は筋肉量（除脂肪体重）の分解を伴うリスクが高いため、摂取カロリーの引き上げを検討してください。",
+                "2週間連続で過剰な減量ペースです。エネルギー不足によるカタボリック状態（筋肉分解）を避けるため、即座にカロリー欠損幅を縮小させてください。",
+                "深刻なペースオーバーです。体脂肪ではなく体内水分や糖質の激しい枯渇、あるいは過度な食事制限の可能性があります。食事制限を緩めてください。NEAT（非運動性活動熱産生）を意識しましょう。"
+            ],
+            yellow: [
+                "体重が均衡しています。ベースが鈍化しています。増枠摂取による水分保持の可能性もありますが、PFCの再確認を推奨します。",
+                "2週間連続で目標ペースを下回っています。食事ログの見直しと、隠れカロリーを再チェックしてください。",
+                "ペース鈍化が続いています。有酸素のボリュームを15〜20分追加するのも有効です。",
+                "3週間以上ペースが鈍化。2〜3日のリフィードを挟んで代謝をリセットしましょう。",
+                "長期停滞。ダイエットブレイク（1〜2週間メンテナンス）を実施し、ホルモンバランスの回復を推奨します。",
+                "理論値との乖離が拡大。5-10%のカロリー調整を検討してください。",
+                "代謝適応の可能性。リフィード（ハイカーボ）を入れて代謝に刺激を。",
+                "2週間連続の警告。PFCバランスの再計算と食事記録の正確性を見直してください。",
+                "TDEEの活動レベル設定が実態と合っているか確認しましょう。",
+                "3週間以上の警告。ダイエットブレイクを取り戻す再開プランを検討してください。",
+                "深刻な停滞。専門家への相談を推奨します。"
+            ],
+            green: [
+                "現在のカロリー赤字は非常に安全な範囲内です。国際スポーツ栄養学会(ISSN)の基準においても、筋肉量（除脂肪体重）やトレーニングパフォーマンスを最大限に維持しながら、体脂肪のみを狙って落とせる最も理想的なペースです。このままのPFCバランスを維持して継続しましょう。"
+            ],
+            red: [
+                "カロリーの赤字幅がやや大きくなり、注意が必要な領域に入り始めています。体脂肪の減少スピードは上がりますが、十分なタンパク質摂取と強度の高いレジスタンストレーニングを行わないと、脂肪と一緒に筋肉も分解（カタボリック）され始めるリスクがあります。疲労感や扱える重量の低下に注意してください。",
+                "危険な減量幅に達しています。エネルギーアベイラビリティ（利用可能エネルギー）が低下しており、生体が『飢餓状態』を察知し始めているサインです。この状態を数日以上続けると、筋肉量の著しい減少、ホルモンバランスの乱れ、および代謝適応（停滞期の早期到来）を招くリスクが極めて高くなります。カロリーの引き上げを強く推奨します。"
+            ]
+        };
 
-  const axisMin = +(Math.floor(rangeMin / step) * step - step).toFixed(2);
-  const axisMax = +(Math.ceil(rangeMax / step) * step + step).toFixed(2);
-  const axisRange = axisMax - axisMin || 1;
-  const YAXIS_W = 38, PAD_T = 26, PAD_B = 34, PAD_R = 10, COL_W = 52, CHART_H = 140;
-  const H = PAD_T + CHART_H + PAD_B, SCROLL_W = COL_W * data.length + PAD_R;
-  const toX = i => COL_W * i + COL_W / 2;
-  const toY = v => PAD_T + CHART_H - ((v - axisMin) / axisRange) * CHART_H;
-  const pts = filled.map((v, i) => `${toX(i)},${toY(v)}`);
-  const yLabels = []; for (let v = axisMin; v <= axisMax + 0.001; v = +(v + step).toFixed(2)) yLabels.push(+v.toFixed(2));
-  const getYear = (ds) => { const p = ds.split("/"); return p.length === 3 ? p[0] : ""; };
-  const clipTop = PAD_T, clipHeight = CHART_H;
-  const mkPts = (arr) => arr ? arr.map((w, i) => `${toX(i)},${toY(w)}`).join(" ") : "";
+        const CALORIE_DEFICIT_MSGS = {
+            green: "現在のカロリー赤字は非常に安全な範囲内です。国際スポーツ栄養学会(ISSN)の基準においても、筋肉量（除脂肪体重）やトレーニングパフォーマンスを最大限に維持しながら、体脂肪のみを狙って落とせる最も理想的なペースです。このままのPFCバランスを維持して継続しましょう。",
+            yellow: "カロリーの赤字幅がやや大きくなり、注意が必要な領域に入り始めています。体脂肪の減少スピードは上がりますが、十分なタンパク質摂取と強度の高いレジスタンストレーニングを行わないと、脂肪と一緒に筋肉も分解（カタボリック）され始めるリスクがあります。疲労感や扱える重量の低下に注意してください。",
+            red: "危険な減量幅に達しています。エネルギーアベイラビリティ（利用可能エネルギー）が低下しており、生体が『飢餓状態』を察知し始めているサインです。この状態を数日以上続けると、筋肉量の著しい減少、ホルモンバランスの乱れ、および代謝適応（停滞期の早期到来）を招くリスクが極めて高くなります。カロリーの引き上げを強く推奨します。",
+            purple: "警告：今すぐ食事制限を緩和し、カロリー赤字幅を縮小させてください。基準代謝を大幅に割り込む致命的なエネルギー不足です。体脂肪の減少は完全に頭打ちになり、生体維持のために筋肉の分解（重度のカタボリック）が最優先で進んでしまいます。また、免疫力の低下や深刻な慢性疲労を引き起こします。今すぐ安全なカロリー幅まで摂取カロリーを引き上げてください。"
+        };
 
-  return (
-    <div style={{ display: "flex", gap: 0, userSelect: "none" }}>
-      <svg width={YAXIS_W} height={H} style={{ flexShrink: 0, display: "block" }}>
-        {yLabels.map((v, i) => {
-          const y = toY(v);
-          return (<g key={i}><line x1={YAXIS_W - 4} y1={y} x2={YAXIS_W} y2={y} stroke="#e0e0de" strokeWidth="1" /><text x={YAXIS_W - 6} y={y + 4} textAnchor="end" fontSize="9" fill="#9a9a9a" fontFamily="'DM Mono',monospace">{v.toFixed(1)}</text></g>);
-        })}
-      </svg>
-      <div ref={scrollRef} style={{ flex: 1, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", cursor: "grab" }}
-        onMouseDown={e => { const el = scrollRef.current; let sX = e.pageX - el.offsetLeft, sL = el.scrollLeft; const mv = ev => { el.scrollLeft = sL - (ev.pageX - el.offsetLeft - sX); }; const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); }}
-        onTouchStart={e => { const el = scrollRef.current; const sX = e.touches[0].pageX; const sL = el.scrollLeft; const mv = ev => { el.scrollLeft = sL - (ev.touches[0].pageX - sX); }; const up = () => { el.removeEventListener("touchmove", mv); el.removeEventListener("touchend", up); }; el.addEventListener("touchmove", mv, { passive: true }); el.addEventListener("touchend", up); }}>
-        <svg width={SCROLL_W} height={H} style={{ display: "block", minWidth: SCROLL_W }}>
-          <defs><linearGradient id={`tg-${chartId}-${mode}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={lineColor} stopOpacity="0.12" /><stop offset="100%" stopColor={lineColor} stopOpacity="0" /></linearGradient><clipPath id={`cClip-${chartId}`}><rect x="0" y={clipTop} width={SCROLL_W} height={clipHeight} /></clipPath></defs>
-          {yLabels.map((v, i) => (<line key={i} x1={0} y1={toY(v)} x2={SCROLL_W} y2={toY(v)} stroke="#ebebea" strokeWidth="1" />))}
-          {showLines && showIssn && issnUpper && issnLower && issnUpper.length > 0 && (() => { const upperPts = issnUpper.map((w, i) => `${toX(i)},${toY(w)}`); const lowerPts = [...issnLower].map((w, i) => `${toX(i)},${toY(w)}`).reverse(); return (<polygon clipPath={`url(#cClip-${chartId})`} points={[...upperPts, ...lowerPts].join(" ")} fill="rgba(255,159,64,0.12)" stroke="none" />); })()}
-          {showLines && showIssn && issnLine && issnLine.length > 0 && (<polyline clipPath={`url(#cClip-${chartId})`} points={mkPts(issnLine)} fill="none" stroke="#ff9f40" strokeWidth="2" strokeDasharray="3 3" />)}
-          {showLines && goalLine && goalLine.length > 0 && (<polyline clipPath={`url(#cClip-${chartId})`} points={mkPts(goalLine)} fill="none" stroke="#6bcf7f" strokeWidth="2" strokeDasharray="4 2" />)}
-          <polygon points={`${toX(0)},${PAD_T + CHART_H} ${pts.join(" ")} ${toX(data.length - 1)},${PAD_T + CHART_H}`} fill={`url(#tg-${chartId}-${mode})`} />
-          <polyline points={pts.join(" ")} fill="none" stroke={lineColor} strokeWidth="2" strokeLinejoin="round" />
-          {data.map((d, i) => {
-            const v = d[label], fv = filled[i], cx = toX(i), cy = toY(fv), has = v !== null;
+        const EMPTY_MEALS = [
+            { label: "起床後", labelEn: "WAKING UP", desc: "", p: "", f: "", c: "" },
+            { label: "朝ご飯", labelEn: "MORNING", desc: "", p: "", f: "", c: "" },
+            { label: "昼ご飯", labelEn: "LUNCH", desc: "", p: "", f: "", c: "" },
+            { label: "晩ご飯", labelEn: "DINNER", desc: "", p: "", f: "", c: "" },
+            { label: "トレーニング", labelEn: "WORKOUT", desc: "", p: "", f: "", c: "" },
+            { label: "就寝前", labelEn: "PRE-BED", desc: "", p: "", f: "", c: "" },
+            { label: "その他1", labelEn: "OTHER 1", desc: "", p: "", f: "", c: "", editable: true },
+            { label: "その他2", labelEn: "OTHER 2", desc: "", p: "", f: "", c: "", editable: true }
+        ];
+
+        /* === COMPONENTS === */
+        function TrendChart({ data, mode, onClickDate, goalLine, issnUpper, issnLower, showLines, showIssn = true, chartId = "main" }) {
+            if (!data || !data.length) return <div style={{ padding: 20, textAlign: "center", fontSize: 10, color: "#999" }}>データなし</div>;
+            
+            const label = mode === "weight" ? "weight" : "fat";
+            const unit = mode === "weight" ? "kg" : "%";
+            const step = mode === "weight" ? 1 : 0.5;
+            const lineColor = mode === "weight" ? "#1a1a1a" : "#5a7a5a";
+            const const_scrollRef = useRef(null);
+            
+            const vals = data.map(d => d[label]);
+            let filled = [];
+            let last = null;
+            vals.forEach(v => { if (v !== null) last = v; filled.push(last); });
+            const nonNull = filled.filter(v => v !== null);
+            if (!nonNull.length) return <div style={{ padding: 20, textAlign: "center", fontSize: 10, color: "#999" }}>データなし</div>;
+            
+            const const_actualMin = Math.min(...nonNull);
+            const const_actualMax = Math.max(...nonNull);
+            const const_actualCenter = (const_actualMin + const_actualMax) / 2;
+            let rangeMin = const_actualMin - step;
+            let rangeMax = const_actualMax + step;
+            
+            if (showLines) {
+                const linesVals = [];
+                if (goalLine && goalLine[label] !== undefined) linesVals.push(goalLine[label]);
+                if (showIssn) {
+                    if (issnUpper && issnUpper[label] !== undefined) linesVals.push(issnUpper[label]);
+                    if (issnLower && issnLower[label] !== undefined) linesVals.push(issnLower[label]);
+                }
+                if (linesVals.length) {
+                    const lMin = Math.min(...linesVals);
+                    const lMax = Math.max(...linesVals);
+                    rangeMin = Math.min(rangeMin, lMin - step);
+                    rangeMax = Math.max(rangeMax, lMax + step);
+                }
+            }
+            
+            if (rangeMax === rangeMin) { rangeMax += step; rangeMin -= step; }
+            const vRange = rangeMax - rangeMin;
+            
+            const cWidth = Math.max(500, data.length * 36);
+            const cHeight = 160;
+            const pTop = 15;
+            const pBot = 20;
+            const dHeight = cHeight - pTop - pBot;
+            
+            const getY = (v) => { if (v === null || v === undefined) return pTop + dHeight / 2; return pTop + dHeight - ((v - rangeMin) / vRange) * dHeight; };
+            const getX = (idx) => 25 + idx * 36;
+            
+            useEffect(() => { if (const_scrollRef.current) const_scrollRef.current.scrollLeft = const_scrollRef.current.scrollWidth; }, [data]);
+            
             return (
-              <g key={i} style={{ cursor: has ? "pointer" : "default" }} onClick={() => has && onClickDate && onClickDate(d)}>
-                <rect x={cx - 26} y={H - PAD_B} width={52} height={PAD_B} fill="transparent" />
-                <text x={cx} y={H - 16} textAnchor="middle" fontSize="8" fill={has ? "#2a2a2a" : "#ccc"} fontFamily="'DM Mono',monospace" fontWeight={has ? "600" : "400"}>{fmtShort(d.date)}</text>
-                {(i === 0 || getYear(d.date) !== (i > 0 ? getYear(data[i - 1].date) : "")) && (<text x={cx} y={H - 5} textAnchor="middle" fontSize="7" fill="#f4a261" fontFamily="'DM Mono',monospace" fontWeight="700">{getYear(d.date)}</text>)}
-                <circle cx={cx} cy={cy} r={has ? 4 : 3} fill="#fff" stroke={has ? lineColor : "#ccc"} strokeWidth="2" />
-                {has && (<text x={cx} y={cy - 10} textAnchor="middle" fontSize="8" fontWeight="700" fill={lineColor} fontFamily="'DM Mono',monospace">{v.toFixed(1)}</text>)}
-                {d.hicarb && (<text x={cx} y={cy + 16} textAnchor="middle" fontSize="7" fontWeight="700" fill="#ff6b35" fontFamily="'DM Mono',monospace">HC</text>)}
-              </g>
+                <div style={{ background: "#fff", border: "1px solid #1a1a1a", padding: "12px 8px 8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#666", marginBottom: 6, padding: "0 4px" }}>
+                        <span>MAX: {rangeMax.toFixed(1)}{unit}</span>
+                        <span style={{ fontWeight: "bold", color: "#1a1a1a" }}>{mode === "weight" ? "WEIGHT TREND" : "FAT % TREND"}</span>
+                        <span>MIN: {rangeMin.toFixed(1)}{unit}</span>
+                    </div>
+                    <div ref={const_scrollRef} style={{ width: "100%", overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+                        <div style={{ width: cWidth, height: cHeight, position: "relative", backgroundColor: "#fafafa" }}>
+                            <svg width={cWidth} height={cHeight} style={{ display: "block" }}>
+                                <g stroke="#eaeaea" strokeWidth="0.5" strokeDasharray="2,2">
+                                    {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => { const y = pTop + dHeight * pct; return <line key={i} x1="0" y1={y} x2={cWidth} y2={y} />; })}
+                                </g>
+                                {showLines && goalLine && (
+                                    <line x1="0" y1={getY(goalLine[label])} x2={cWidth} y2={getY(goalLine[label])} stroke="#007aff" strokeWidth="1" strokeDasharray="3,3" />
+                                )}
+                                {showLines && showIssn && issnUpper && issnLower && (
+                                    <>
+                                        <line x1="0" y1={getY(issnUpper[label])} x2={cWidth} y2={getY(issnUpper[label])} stroke="#e4a853" strokeWidth="0.75" strokeDasharray="2,2" />
+                                        <line x1="0" y1={getY(issnLower[label])} x2={cWidth} y2={getY(issnLower[label])} stroke="#e4a853" strokeWidth="0.75" strokeDasharray="2,2" />
+                                        <path d={`M 0 ${getY(issnUpper[label])} L ${cWidth} ${getY(issnUpper[label])} L ${cWidth} ${getY(issnLower[label])} L 0 ${getY(issnLower[label])} Z`} fill="#e4a853" fillOpacity="0.04" />
+                                    </>
+                                )}
+                                {data.map((d, i) => {
+                                    if (i === 0) return null;
+                                    const prevV = filled[i - 1];
+                                    const currV = filled[i];
+                                    if (prevV === null || currV === null) return null;
+                                    return <line key={i} x1={getX(i - 1)} y1={getY(prevV)} x2={getX(i)} y2={getY(currV)} stroke={lineColor} strokeWidth={mode === "weight" ? "1.5" : "1"} strokeDasharray={data[i].weight === null || (mode === "fat" && data[i].fat === null) ? "2,2" : "0"} />;
+                                })}
+                                {data.map((d, i) => {
+                                    const v = d[label];
+                                    if (v === null) return null;
+                                    const isHi = d.hicarb && mode === "weight";
+                                    return (
+                                        <g key={i} onClick={() => onClickDate && onClickDate(d.date)} style={{ cursor: "pointer" }}>
+                                            <circle cx={getX(i)} cy={getY(v)} r={isHi ? "4" : "2.5"} fill={isHi ? "#e4a853" : lineColor} stroke="#fff" strokeWidth="0.5" />
+                                            <text x={getX(i)} y={getY(v) - 6} textAnchor="middle" fontSize="7" fontFamily="DM Mono" fill={isHi ? "#b87818" : "#1a1a1a"}>{v.toFixed(1)}</text>
+                                        </g>
+                                    );
+                                })}
+                                {data.map((d, i) => (
+                                    <text key={i} x={getX(i)} y={cHeight - 6} textAnchor="middle" fontSize="7" fontFamily="DM Mono" fill={d.hicarb ? "#e4a853" : "#666"} style={{ cursor: "pointer" }} onClick={() => onClickDate && onClickDate(d.date)}>
+                                        {fmtShort(d.date)}
+                                    </text>
+                                ))}
+                            </svg>
+                        </div>
+                    </div>
+                </div>
             );
-          })}
-          {showLines && (
-            <g transform={`translate(${SCROLL_W - 80},${PAD_T + 4})`}>
-              <rect x="-6" y="-8" width="82" height={showIssn ? 90 : 52} rx="4" fill="rgba(255,255,255,0.85)" />
-              <line x1="0" y1="4" x2="20" y2="4" stroke="#1a1a1a" strokeWidth="2" /><text x="24" y="8" fontSize="7" fill="#1a1a1a" fontWeight="600" fontFamily="'DM Mono',monospace">実測</text>
-              <line x1="0" y1="22" x2="20" y2="22" stroke="#6bcf7f" strokeWidth="2" strokeDasharray="4 2" /><text x="24" y="26" fontSize="7" fill="#6bcf7f" fontWeight="600" fontFamily="'DM Mono',monospace">目標</text>
-              {showIssn && (
-                <>
-                  <line x1="0" y1="40" x2="20" y2="40" stroke="#ff9f40" strokeWidth="2" strokeDasharray="3 3" /><text x="24" y="44" fontSize="7" fill="#ff9f40" fontWeight="600" fontFamily="'DM Mono',monospace">ISSN 0.7%/週</text>
-                  <rect x="0" y="54" width="20" height="10" rx="2" fill="rgba(255,159,64,0.25)" stroke="none" /><text x="24" y="62" fontSize="7" fill="#ff9f40" fontWeight="600" fontFamily="'DM Mono',monospace">推奨 0.5-1.0%</text>
-                </>
-              )}
-            </g>
-          )}
-        </svg>
-      </div>
-    </div>
-  );
-}
+        }
 
-function MacroRing({ protein, fat, carbs }) {
-  const t = protein * 4 + fat * 9 + carbs * 4; if (!t) return null;
-  const pP = (protein * 4) / t, pF = (fat * 9) / t;
-  const R = 48, cx = 56, cy = 56, sw = 11, circ = 2 * Math.PI * R;
-  const segs = [{ pct: pP, c: "#1a1a1a" }, { pct: pF, c: "#6a6a6a" }, { pct: 1 - pP - pF, c: "#c8c8c6" }];
-  let off = 0;
-  return (
-    <svg width="112" height="112" style={{ flexShrink: 0 }}>
-      <circle cx={cx} cy={cy} r={R} fill="none" stroke="#ebebea" strokeWidth={sw} />
-      {segs.map((s, i) => {
-        const dash = s.pct * circ;
-        const el = (<circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={s.c} strokeWidth={sw} strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-off * circ} style={{ transform: "rotate(-90deg)", transformOrigin: `${cx}px ${cy}px` }} />);
-        off += s.pct; return el;
-      })}
-      <text x={cx} y={cy - 5} textAnchor="middle" fill="#1a1a1a" fontSize="13" fontWeight="600" fontFamily="'DM Mono',monospace">{Math.round(t)}</text>
-      <text x={cx} y={cy + 11} textAnchor="middle" fill="#6a6a6a" fontSize="9" fontFamily="'DM Mono',monospace">kcal</text>
-    </svg>
-  );
-}
+        /* === MAIN APP === */
+        function App() {
+            injectGlobalStyles();
 
-const Card = ({ children, style = {} }) => (<div style={{ background: "#fff", border: "1px solid #e0e0de", borderRadius: 6, padding: "20px 22px", ...style }}>{children}</div>);
-const SL = ({ children, style = {} }) => (<p style={{ fontSize: 9, letterSpacing: 4, color: "#8a8a8a", fontWeight: 500, marginBottom: 16, ...style }}>{children}</p>);
-const Modal = ({ children, onClose }) => (<div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.28)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}><div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 8, padding: "24px 22px", width: "100%", maxWidth: 540, boxShadow: "0 8px 40px rgba(0,0,0,0.15)", maxHeight: "90vh", overflowY: "auto" }}>{children}</div></div>);
-
-function MiniCal({ onSel, sel }) {
-  const today = new Date();
-  const [curY, setCurY] = useState(today.getFullYear());
-  const [curM, setCurM] = useState(today.getMonth());
-  const fd = new Date(curY, curM, 1).getDay();
-  const dim = new Date(curY, curM + 1, 0).getDate();
-  const cells = [...Array(fd).fill(null), ...Array.from({ length: dim }, (_, i) => i + 1)];
-  const MN = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-  const DN = ["日", "月", "火", "水", "木", "金", "土"];
-  const goPrev = () => { if (curM === 0) { setCurY(y => y - 1); setCurM(11); } else { setCurM(m => m - 1); } };
-  const goNext = () => { if (curM === 11) { setCurY(y => y + 1); setCurM(0); } else { setCurM(m => m + 1); } };
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <button type="button" onClick={goPrev} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#3a3a3a", lineHeight: 1 }}>‹</button>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "'DM Mono',monospace" }}>{curY}年 {MN[curM]}</span>
-        <button type="button" onClick={goNext} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#3a3a3a", lineHeight: 1 }}>›</button>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>{DN.map(d => (<div key={d} style={{ textAlign: "center", fontSize: 9, color: "#9a9a9a", fontWeight: 600, padding: "3px 0" }}>{d}</div>))}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>{cells.map((d, i) => {
-        if (!d) return <div key={i} />;
-        const ds = `${curY}/${String(curM + 1).padStart(2, "0")}/${String(d).padStart(2, "0")}`;
-        const cellDate = new Date(curY, curM, d);
-        const isFut = cellDate > today;
-        const isSel = sel === ds;
-        return (<button key={i} type="button" disabled={isFut} onClick={() => onSel(ds)} style={{ background: isSel ? "#1a1a1a" : "none", color: isSel ? "#fff" : isFut ? "#ccc" : "#1a1a1a", border: "none", borderRadius: 4, padding: "7px 0", cursor: isFut ? "default" : "pointer", fontSize: 11, fontFamily: "'DM Mono',monospace", fontWeight: 600 }}>{d}</button>);
-      })}</div>
-    </div>
-  );
-}
-
-/* ═══════ MAIN APP ═══════ */
-function App() {
-  /* Inject global CSS */
-  useEffect(() => { injectGlobalStyles(); }, []);
-
-  /* Load saved state or use defaults */
-  const saved = useMemo(() => loadLS(), []);
-  const D = saved || {};
-  const [prof, setProf] = useState(D.prof || { height: "170", age: "30", sex: "male", activity: "moderate", goal: "cut", goalCustom: "", weight: "" });
-  const [tw, setTw] = useState(""), [tf, setTf] = useState("");
-  const [data, setData] = useState(D.data || MOCK);
-  const [calcMode, setCalcMode] = useState(D.calcMode || "auto");
-
-  /* ═══ Migrate old data formats ═══ */
-  const MANUAL_DEFAULTS = [{ label: "起床後", p: "", f: "", c: "", extra: true }, { label: "朝ご飯", p: "", f: "", c: "" }, { label: "昼ご飯", p: "", f: "", c: "" }, { label: "晩ご飯", p: "", f: "", c: "" }, { label: "トレーニング", p: "", f: "", c: "", extra: true }, { label: "就寝前", p: "", f: "", c: "", extra: true }];
-  const SEMI_DEFAULTS = [{ label: "起床後", labelEn: "WAKING UP", p: "", f: "", c: "", locked: true, extra: true }, { label: "朝ご飯", labelEn: "MORNING", p: "", f: "", c: "", locked: true }, { label: "昼ご飯", labelEn: "LUNCH", p: "", f: "", c: "", locked: true }, { label: "晩ご飯", labelEn: "DINNER", p: "", f: "", c: "", locked: true }, { label: "トレーニング", labelEn: "WORKOUT", p: "", f: "", c: "", locked: true, extra: true }, { label: "就寝前", labelEn: "PRE-BED", p: "", f: "", c: "", locked: true, extra: true }, { label: "その他1", labelEn: "OTHER 1", p: "", f: "", c: "", locked: true }, { label: "その他2", labelEn: "OTHER 2", p: "", f: "", c: "", locked: true }];
-  
-  const migrateManual = (saved) => { if (!saved || !Array.isArray(saved)) return MANUAL_DEFAULTS; if (saved.length >= 6) return saved; return MANUAL_DEFAULTS.map(d => { const existing = saved.find(s => s.label === d.label); return existing ? { ...d, ...existing } : d; }); };
-  const migrateSemi = (saved) => { if (!saved || !Array.isArray(saved)) return SEMI_DEFAULTS; if (saved.length >= 8) return saved; return SEMI_DEFAULTS.map(d => { const existing = saved.find(s => s.label === d.label); return existing ? { ...d, ...existing } : d; }); };
-  
-  const [manualMeals, setManualMeals] = useState(migrateManual(D.manualMeals));
-  const [manualExtra, setManualExtra] = useState(D.manualExtra || [{ label: "その他1", p: "", f: "", c: "" }, { label: "その他2", p: "", f: "", c: "" }]);
-  const [manualShowExtra, setManualShowExtra] = useState(false);
-  const [tab, setTab] = useState("dashboard");
-  const [supps, setSupps] = useState(D.supps || { pre: "クレアチン 5g / カフェイン 200mg", during: "EAA 15g / クエン酸 ○g", post: "ホエイプロテイン 30g / グルタミン 6g", bed: "亜鉛 10g / マグネシウム 150mg" });
-  const [reminder, setReminder] = useState(D.reminder || false);
-  const [startWeight, setStartWeight] = useState(D.startWeight || "77.0");
-  const [gw, setGw] = useState(D.gw ?? 70), [gd, setGd] = useState(D.gd || "2026-04-01"), [startDate, setStartDate] = useState(D.startDate || "2026-01-01");
-  const [chart, setChart] = useState("weight");
-  const [mCloth, setMCloth] = useState(false), [mEdit, setMEdit] = useState(false), [mCal, setMCal] = useState(false);
-  const [mMealSet, setMMealSet] = useState(false), [mDelConfirm, setMDelConfirm] = useState(false), [mResetConfirm, setMResetConfirm] = useState(false);
-  const [mInfo, setMInfo] = useState(false);
-  const [mSetPicker, setMSetPicker] = useState(null);
-  const [mSetConfirm, setMSetConfirm] = useState(null);
-  const [mSetBulk, setMSetBulk] = useState(true);
-  const [macroView, setMacroView] = useState("pct");
-  const [pfcGram, setPfcGram] = useState(D.pfcGram || { p: "", f: "", c: "" });
-  const [gramTargetMode, setGramTargetMode] = useState(false);
-  const [repFoods, setRepFoods] = useState(D.repFoods || { pName: "鶏むね肉(皮なし)", pPer100: "23.3", fName: "オリーブオイル", fPer100: "100.0", cName: "白米(炊飯)", cPer100: "36.8" });
-  const [remFoodMode, setRemFoodMode] = useState(false);
-  const [showRepFoods, setShowRepFoods] = useState(false);
-  const [editTgt, setEditTgt] = useState(null), [calDate, setCalDate] = useState(""), [calW, setCalW] = useState(""), [calF, setCalF] = useState("");
-  const [cloth, setCloth] = useState(D.cloth || [{ name: "ジム着（T+ショーツ）", gram: "300" }, { name: "仕事着（スーツ）", gram: "1500" }, { name: "パジャマ", gram: "200" }, { name: "スウェット上下", gram: "600" }, { name: "カスタム5", gram: "" }]);
-  const [pfcPct, setPfcPct] = useState(D.pfcPct || { p: "", f: "", c: "" });
-  
-  const pfcSum = (pfcPct.p ? parseFloat(pfcPct.p) : 0) + (pfcPct.f ? parseFloat(pfcPct.f) : 0) + (pfcPct.c ? parseFloat(pfcPct.c) : 0);
-  const pfcFilled = pfcPct.p !== "" && pfcPct.f !== "" && pfcPct.c !== "";
-  const pfcErr = pfcFilled && Math.abs(pfcSum - 100) > 0.01;
-  const [mealSets, setMealSets] = useState(D.mealSets || [{ title: "デフォルト", meals: JSON.parse(JSON.stringify(EMPTY_MEALS)) }]);
-  const [curSetIdx, setCurSetIdx] = useState(0);
-  const [delTgtIdx, setDelTgtIdx] = useState(null), [resetTgtIdx, setResetTgtIdx] = useState(null);
-  const [hicarbDays, setHicarbDays] = useState(D.hicarbDays ?? 1);
-  const [hicarbCycleDenom, setHicarbCycleDenom] = useState(D.hicarbCycleDenom ?? 7);
-  const [mHicarbEdit, setMHicarbEdit] = useState(false);
-  const [hicarbEditInput, setHicarbEditInput] = useState("");
-  const [mHicarbReset, setMHicarbReset] = useState(false);
-  const [hicarbTarget, setHicarbTarget] = useState(D.hicarbTarget ?? 7);
-  const [hicarbInput, setHicarbInput] = useState(String(D.hicarbTarget ?? 7));
-  const [showHicarbModal, setShowHicarbModal] = useState(false);
-  const [showHicarbResetConfirm, setShowHicarbResetConfirm] = useState(false);
-  const [paceMode, setPaceMode] = useState(D.paceMode || "auto"), [customPace, setCustomPace] = useState(D.customPace || "0.75"), [customDirection, setCustomDirection] = useState(D.customDirection || "cut");
-  const [consecutiveYellow] = useState(0), [consecutiveRed] = useState(0);
-  const [semiMeals, setSemiMeals] = useState(migrateSemi(D.semiMeals));
-  const [semiShowExtra, setSemiShowExtra] = useState(false);
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [advisorCalStart, setAdvisorCalStart] = useState(D.advisorCalStart || "");
-  const [advisorCalSW, setAdvisorCalSW] = useState(D.advisorCalSW || "");
-  const [advisorCalGW, setAdvisorCalGW] = useState(D.advisorCalGW || "");
-  const [advisorCalKcal, setAdvisorCalKcal] = useState(D.advisorCalKcal || "");
-  const [advisorCalDir, setAdvisorCalDir] = useState(D.advisorCalDir || "cut");
-  const [mAdvisorInfo, setMAdvisorInfo] = useState(false);
-  const [advisorTdeeH, setAdvisorTdeeH] = useState(D.advisorTdeeH || "");
-  const [advisorTdeeA, setAdvisorTdeeA] = useState(D.advisorTdeeA || "");
-  const [advisorTdeeSex, setAdvisorTdeeSex] = useState(D.advisorTdeeSex || "male");
-  const [advisorTdeeW, setAdvisorTdeeW] = useState(D.advisorTdeeW || "");
-  const [advisorTdeeAf, setAdvisorTdeeAf] = useState(D.advisorTdeeAf || "moderate");
-
-  /* ═══ AUTO-SAVE (Optimized with Debounce) ═══ */
-  useEffect(() => {
-    const timerId = setTimeout(() => {
-      saveLS({ prof, data, calcMode, manualMeals, manualExtra, supps, reminder, startWeight, gw, gd, startDate, cloth, pfcPct, pfcGram, mealSets, hicarbDays, hicarbCycleDenom, hicarbTarget, paceMode, customPace, customDirection, semiMeals, repFoods, advisorCalStart, advisorCalSW, advisorCalGW, advisorCalKcal, advisorCalDir, advisorTdeeH, advisorTdeeA, advisorTdeeSex, advisorTdeeW, advisorTdeeAf });
-    }, 500);
-    return () => clearTimeout(timerId);
-  }, [prof, data, calcMode, manualMeals, manualExtra, supps, reminder, startWeight, gw, gd, startDate, cloth, pfcPct, pfcGram, mealSets, hicarbDays, hicarbCycleDenom, hicarbTarget, paceMode, customPace, customDirection, semiMeals, repFoods, advisorCalStart, advisorCalSW, advisorCalGW, advisorCalKcal, advisorCalDir, advisorTdeeH, advisorTdeeA, advisorTdeeSex, advisorTdeeW, advisorTdeeAf]);
-
-  const record = (ds, w, f, hc) => {
-    const wv = w !== "" && w != null ? parseFloat(w) : null;
-    const fv = f !== "" && f != null ? parseFloat(f) : null;
-    setData(prev => {
-      const ex = prev.findIndex(d => d.date === ds);
-      if (ex >= 0) {
-        const n = [...prev];
-        n[ex] = { ...n[ex], weight: wv ?? n[ex].weight, fat: fv ?? n[ex].fat, hicarb: hc !== undefined ? hc : n[ex].hicarb };
-        return n;
-      }
-      return [...prev, { date: ds, weight: wv, fat: fv, hicarb: hc || false }].sort((a, b) => a.date.localeCompare(b.date));
-    });
-  };
-
-  /* ═══ MEMOIZED HEAVY CALCULATIONS ═══ */
-  const latest = useMemo(() => [...data].reverse().find(d => d.weight !== null), [data]);
-  const W = latest?.weight ?? 75;
-  const FP = latest?.fat ?? 20;
-  const lean = W * (1 - FP / 100);
-  const heightNum = parseFloat(prof.height) || 170;
-  const ageNum = parseFloat(prof.age) || 30;
-  const profWeight = parseFloat(prof.weight) || W;
-  
-  const bmr = useMemo(() => calcBMR(profWeight, heightNum, ageNum, prof.sex), [profWeight, heightNum, ageNum, prof.sex]);
-  const tdee = useMemo(() => calcTDEE(bmr, prof.activity), [bmr, prof.activity]);
-  
-  const pP = pfcPct.p ? parseFloat(pfcPct.p) : null, fPr = pfcPct.f ? parseFloat(pfcPct.f) : null, cP = pfcPct.c ? parseFloat(pfcPct.c) : null;
-  const aFC = useMemo(() => calcPFC(tdee, prof.goal, lean, pP && fPr && cP ? pP : 30, pP && fPr && cP ? fPr : 25, prof.goalCustom), [tdee, prof.goal, lean, pP, fPr, cP, prof.goalCustom]);
-  
-  const mealTarget = useMemo(() => ({ protein: Math.round(aFC.protein / 3), fat: Math.round(aFC.fat / 3), carbs: Math.round(aFC.carbs / 3) }), [aFC]);
-  
-  const { semiComputed, semiTotal } = useMemo(() => {
-    const sc = semiMeals.map((m) => {
-      const isMain = ["朝ご飯", "昼ご飯", "晩ご飯"].includes(m.label);
-      const p = m.locked ? (isMain ? mealTarget.protein : 0) : (parseFloat(m.p) || 0);
-      const f = m.locked ? (isMain ? mealTarget.fat : 0) : (parseFloat(m.f) || 0);
-      const c = m.locked ? (isMain ? mealTarget.carbs : 0) : (parseFloat(m.c) || 0);
-      return { ...m, cp: p, cf: f, cc: c, cal: Math.round(p * 4 + f * 9 + c * 4) };
-    });
-    const st = { protein: sc.reduce((s, m) => s + m.cp, 0), fat: sc.reduce((s, m) => s + m.cf, 0), carbs: sc.reduce((s, m) => s + m.cc, 0), calories: sc.reduce((s, m) => s + m.cal, 0) };
-    return { semiComputed: sc, semiTotal: st };
-  }, [semiMeals, mealTarget]);
-
-  const aPFC = useMemo(() => {
-    if (calcMode === "auto") return aFC;
-    if (calcMode === "manual") {
-      let p = 0, f = 0, c = 0;
-      manualMeals.forEach(m => { p += parseFloat(m.p) || 0; f += parseFloat(m.f) || 0; c += parseFloat(m.c) || 0; });
-      manualExtra.forEach(ex => { p += parseFloat(ex.p) || 0; f += parseFloat(ex.f) || 0; c += parseFloat(ex.c) || 0; });
-      return { calories: Math.round(p * 4 + f * 9 + c * 4), protein: p, fat: f, carbs: c };
-    }
-    return semiTotal;
-  }, [calcMode, aFC, manualMeals, manualExtra, semiTotal]);
-
-  const mealSetTotals = useMemo(() => {
-    if (!mealSets[curSetIdx]) return { p: 0, f: 0, c: 0, cal: 0 };
-    let tp = 0, tf2 = 0, tc = 0;
-    mealSets[curSetIdx].meals.forEach(m => { tp += parseFloat(m.p) || 0; tf2 += parseFloat(m.f) || 0; tc += parseFloat(m.c) || 0; });
-    return { p: tp, f: tf2, c: tc, cal: Math.round(tp * 4 + tf2 * 9 + tc * 4) };
-  }, [mealSets, curSetIdx]);
-
-  const bodyFatKg = +(W * FP / 100).toFixed(1), leanMass = +(W - bodyFatKg).toFixed(1);
-  const pfcTotal = aPFC.protein * 4 + aPFC.fat * 9 + aPFC.carbs * 4;
-  const pfcBalance = pfcTotal > 0 ? { p: ((aPFC.protein * 4 / pfcTotal) * 100).toFixed(0), f: ((aPFC.fat * 9 / pfcTotal) * 100).toFixed(0), c: ((aPFC.carbs * 4 / pfcTotal) * 100).toFixed(0) } : { p: "0", f: "0", c: "0" };
-
-  const gP = parseFloat(pfcGram.p) || 0, gF = parseFloat(pfcGram.f) || 0, gC = parseFloat(pfcGram.c) || 0;
-  const gTotal = gP * 4 + gF * 9 + gC * 4;
-  const gramPct = gTotal > 0 ? { p: ((gP * 4 / gTotal) * 100).toFixed(1), f: ((gF * 9 / gTotal) * 100).toFixed(1), c: ((gC * 4 / gTotal) * 100).toFixed(1) } : { p: "0.0", f: "0.0", c: "0.0" };
-  const tgtCal = aFC.calories || 1;
-  const gramTargetPct = { p: ((gP * 4 / tgtCal) * 100).toFixed(1), f: ((gF * 9 / tgtCal) * 100).toFixed(1), c: ((gC * 4 / tgtCal) * 100).toFixed(1) };
-  const gramTargetSum = parseFloat(gramTargetPct.p) + parseFloat(gramTargetPct.f) + parseFloat(gramTargetPct.c);
-
-  const semiRemaining = { protein: aFC.protein - semiTotal.protein, fat: aFC.fat - semiTotal.fat, carbs: aFC.carbs - semiTotal.carbs };
-  const remCal = semiRemaining.protein * 4 + semiRemaining.fat * 9 + semiRemaining.carbs * 4;
-  const manualRemaining = { protein: aFC.protein - aPFC.protein, fat: aFC.fat - aPFC.fat, carbs: aFC.carbs - aPFC.carbs };
-  const manualRemCal = manualRemaining.protein * 4 + manualRemaining.fat * 9 + manualRemaining.carbs * 4;
-
-  const applyMealSet = (setIdx, mealIdx, mode, slotIdx) => {
-    const src = mealSets[setIdx]?.meals[mealIdx];
-    if (!src) return;
-    if (mode === "manual") {
-      const mLen = manualMeals.length;
-      if (slotIdx < mLen) { setManualMeals(prev => prev.map((m, j) => j === slotIdx ? { ...m, p: src.p || "", f: src.f || "", c: src.c || "" } : m)); }
-      else { const ei = slotIdx - mLen; setManualExtra(prev => prev.map((m, j) => j === ei ? { ...m, p: src.p || "", f: src.f || "", c: src.c || "" } : m)); }
-    } else if (mode === "semi") {
-      setSemiMeals(prev => prev.map((m, j) => j === slotIdx ? { ...m, p: src.p || "", f: src.f || "", c: src.c || "", locked: false } : m));
-    }
-    setMSetPicker(null);
-  };
-
-  const applyBulkMealSet = (setIdx, mode) => {
-    const src = mealSets[setIdx]?.meals;
-    if (!src) return;
-    if (mode === "manual") {
-      setManualMeals(prev => prev.map(m => { const match = src.find(s => s.label === m.label); return match ? { ...m, p: match.p || "", f: match.f || "", c: match.c || "" } : m; }));
-      setManualExtra(prev => prev.map(m => { const match = src.find(s => s.label === m.label); return match ? { ...m, p: match.p || "", f: match.f || "", c: match.c || "" } : m; }));
-    } else if (mode === "semi") {
-      setSemiMeals(prev => prev.map(m => { const match = src.find(s => s.label === m.label); if (!match) return m; const hasVal = (parseFloat(match.p) || 0) > 0 || (parseFloat(match.f) || 0) > 0 || (parseFloat(match.c) || 0) > 0; return { ...m, p: match.p || "", f: match.f || "", c: match.c || "", locked: !hasVal }; }));
-    }
-  };
-
-  const clearManualSlot = (i) => setManualMeals(prev => prev.map((m, j) => j === i ? { ...m, p: "", f: "", c: "" } : m));
-  const clearManualExtra = (i) => setManualExtra(prev => prev.map((m, j) => j === i ? { ...m, p: "", f: "", c: "" } : m));
-  const clearSemiSlot = (i) => setSemiMeals(prev => prev.map((m, j) => j === i ? { ...m, p: "", f: "", c: "" } : m));
-
-  const toFoodGram = (grams, per100) => { const p = parseFloat(per100); if (!p || p <= 0) return "—"; return Math.round((grams / p) * 100); };
-
-  const SW = parseFloat(startWeight) || W;
-  const TW = gw;
-  const sdObj = useMemo(() => parseISO(startDate), [startDate]);
-  const tdObj = useMemo(() => parseISO(gd), [gd]);
-  const totalDays = Math.max(1, daysBtwn(sdObj, tdObj));
-  const dailySlope = (TW - SW) / totalDays;
-  const totalLoss = SW - TW;
-  const lossPerMonth = (totalLoss / (totalDays / 30)).toFixed(2);
-  const lossPerWeek = (totalLoss / (totalDays / 7)).toFixed(2);
-
-  const computeGoalLine = (arr) => {
-    if (paceMode === "custom") {
-      const pv = parseFloat(customPace) || 0.75;
-      const sign = customDirection === "cut" ? -1 : 1;
-      const dp = (pv / 7) * sign;
-      return arr.map(d => { const dfs = daysBtwn(sdObj, parseDate(d.date)); return SW + dp * dfs; });
-    }
-    return arr.map(d => { const dfs = daysBtwn(sdObj, parseDate(d.date)); return SW + dailySlope * dfs; });
-  };
-
-  /* ═══ ADVISOR LOGIC ═══ */
-  const advisorKcalNum = parseFloat(advisorCalKcal) || 0;
-  const advisorSWNum = parseFloat(advisorCalSW) || 0;
-  const advisorGWNum = parseFloat(advisorCalGW) || 0;
-  const advisorCalWarning = useMemo(() => {
-    if (advisorCalDir === "cut") {
-      if (advisorKcalNum <= 0 || advisorKcalNum <= 799) return null;
-      if (advisorKcalNum <= 999) return { color: "#f4a261", msg: "筋肉の分解が強まり、停滞期が早期に来る可能性があります。" };
-      return { color: "#e63946", msg: "基礎代謝を割り込んでいませんか?代謝低下、ホルモンバランスの乱れ、筋肉の著しい減少が起こってしまいます。" };
-    } else {
-      if (advisorKcalNum <= 500) return null;
-      return { color: "#f4a261", msg: "トレーニングなしで500kcalプラス: ほぼ脂肪として蓄積されます。但し、ハードなトレーニングを含む場合は比率を筋肉に寄せることは可能です。" };
-    }
-  }, [advisorCalDir, advisorKcalNum]);
-
-  const advisorArrivalDate = useMemo(() => {
-    if (!advisorCalStart || !advisorSWNum || !advisorGWNum || advisorKcalNum <= 0) return null;
-    const weightDiff = Math.abs(advisorSWNum - advisorGWNum);
-    if (weightDiff <= 0) return null;
-    const daysNeeded = Math.round((weightDiff * 7200) / advisorKcalNum);
-    const arrival = new Date(parseISO(advisorCalStart));
-    arrival.setDate(arrival.getDate() + daysNeeded);
-    return arrival;
-  }, [advisorCalStart, advisorSWNum, advisorGWNum, advisorKcalNum]);
-
-  const advisorTdeeHn = parseFloat(advisorTdeeH) || 0;
-  const advisorTdeeAn = parseFloat(advisorTdeeA) || 0;
-  const advisorTdeeWn = parseFloat(advisorTdeeW) || 0;
-  const advisorBmr = useMemo(() => (advisorTdeeHn && advisorTdeeAn && advisorTdeeWn) ? calcBMR(advisorTdeeWn, advisorTdeeHn, advisorTdeeAn, advisorTdeeSex) : 0, [advisorTdeeHn, advisorTdeeAn, advisorTdeeWn, advisorTdeeSex]);
-  const advisorTdee = advisorBmr ? Math.round(advisorBmr * ACT[advisorTdeeAf].factor) : 0;
-
-  const advisorDeficitRanges = useMemo(() => advisorTdee > 0 ? { greenMax: Math.round(advisorTdee * 0.15), yellowMax: Math.round(advisorTdee * 0.25), redMax: Math.round(advisorTdee * 0.35) } : null, [advisorTdee]);
-
-  const advisorDeficitStatus = useMemo(() => {
-    if (!advisorDeficitRanges || advisorKcalNum <= 0 || advisorCalDir !== "cut") return null;
-    const { greenMax, yellowMax, redMax } = advisorDeficitRanges;
-    if (advisorKcalNum < greenMax) return { status: "Green", dot: "🟢", label: "緑色（安全・推奨）", msg: `理想的なペースです！\n筋肉量とパフォーマンスを維持しながら、体脂肪のみを狙える最も安全な減量幅です。`, color: "#2a9d8f", borderColor: "#2a9d8f" };
-    if (advisorKcalNum < yellowMax) return { status: "Yellow", dot: "🟡", label: "黄色（注意）", msg: `⚠️ 赤字幅がやや過剰です\n減量スピードは上がりますが、筋分解（カタボリック）のリスクが出始めています。`, color: "#f4a261", borderColor: "#f4a261" };
-    if (advisorKcalNum < redMax) return { status: "Red", dot: "🔴", label: "赤色（危険）", msg: `🛑 危険な減量幅に達しています\n体が飢餓状態を察知し、筋肉の著しい減少やホルモンバランスの乱れを招くリスクが極めて高いです。`, color: "#e63946", borderColor: "#e63946" };
-    return { status: "Purple", dot: "🟣", label: "紫色（即時中止）", msg: `🚨 【警告】今すぐ食事制限の緩和を！\n基礎代謝を割り込む致命的なエネルギー不足です。体脂肪の減少は止まり、筋肉の分解が最優先で進んでしまいます。`, color: "#9b59b6", borderColor: "#9b59b6" };
-  }, [advisorDeficitRanges, advisorKcalNum, advisorCalDir]);
-
-  const customArrivalDate = useMemo(() => {
-    if (paceMode !== "custom") return null;
-    const pv = parseFloat(customPace) || 0;
-    if (pv <= 0) return null;
-    const daysNeeded = Math.round((Math.abs(SW - TW) / pv) * 7);
-    const arrival = new Date(sdObj);
-    arrival.setDate(arrival.getDate() + daysNeeded);
-    return arrival;
-  }, [paceMode, customPace, SW, TW, sdObj]);
-
-  const customPaceWarning = useMemo(() => paceMode === "custom" && customDirection === "cut" && (parseFloat(customPace) || 0) > (W * 0.01), [paceMode, customDirection, customPace, W]);
-
-  /* Chart Line Memoization */
-  const computeIssnLine = (arr) => arr.map(d => SW * Math.pow(1 - 0.007, Math.max(0, daysBtwn(sdObj, parseDate(d.date))) / 7));
-  const computeIssnUpper = (arr) => arr.map(d => SW * Math.pow(1 - 0.005, Math.max(0, daysBtwn(sdObj, parseDate(d.date))) / 7));
-  const computeIssnLower = (arr) => arr.map(d => SW * Math.pow(1 - 0.010, Math.max(0, daysBtwn(sdObj, parseDate(d.date))) / 7));
-  
-  const goalWeightsFull = useMemo(() => computeGoalLine(data), [data, paceMode, customPace, customDirection, sdObj, SW, dailySlope]);
-  const issnWeightsFull = useMemo(() => computeIssnLine(data), [data, sdObj, SW]);
-  const issnUpperFull = useMemo(() => computeIssnUpper(data), [data, sdObj, SW]);
-  const issnLowerFull = useMemo(() => computeIssnLower(data), [data, sdObj, SW]);
-  const showIssnLine = !(paceMode === "custom" && customDirection === "bulk");
-
-  const getCurrentTargetPace = () => paceMode === "auto" ? (calcBMI(W, heightNum) >= 25 ? 0.75 : 0.5) : (parseFloat(customPace) || 0.75);
-
-  const getWeekData = (offset) => {
-    const today = new Date();
-    const refDate = new Date(today);
-    refDate.setDate(today.getDate() + offset * 7);
-    const { start, end } = getWeekRange(refDate);
-    const startStr = fmtDS(start), endStr = fmtDS(end);
-    return { start, end, startStr, endStr, data: data.filter(d => d.date >= startStr && d.date <= endStr) };
-  };
-
-  const calcWeeklyLossRate = (weekData) => {
-    const sorted = weekData.filter(d => d.weight !== null).sort((a, b) => a.date.localeCompare(b.date));
-    if (sorted.length < 3) return null;
-    const firstDate = parseDate(sorted[0].date);
-    const n = sorted.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    sorted.forEach(d => { const x = daysBtwn(firstDate, parseDate(d.date)); const y = d.weight; sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x; });
-    const denom = n * sumX2 - sumX * sumX;
-    if (denom === 0) return null;
-    const slope = (n * sumXY - sumX * sumY) / denom;
-    const weeklyChange = slope * 7;
-    const avgWeight = sumY / n;
-    return { pctLoss: (-weeklyChange / avgWeight) * 100, pace: -weeklyChange };
-  };
-
-  const getWeeklyAdvice = (thisWeekData, lastWeekData) => {
-    const thisResult = calcWeeklyLossRate(thisWeekData);
-    if (!thisResult) return { color: "unknown", msg: "✅ データを蓄積中です。記録を続けましょう。", actualPace: null, status: "unknown" };
-    const { pctLoss: thisPct, pace: actualPace } = thisResult;
-    const lastResult = calcWeeklyLossRate(lastWeekData || []);
-    const lastPct = lastResult ? lastResult.pctLoss : 0;
-
-    if (thisPct > 1.0) {
-      if (lastPct > 1.0) return { color: "purple", msg: ADVICE_MSGS.purple[1], actualPace, status: "Purple" };
-      return { color: "purple", msg: ADVICE_MSGS.purple[0], actualPace, status: "Purple" };
-    }
-    if (thisPct >= 0.40 && thisPct <= 1.0) return { color: "green", msg: "✅ トレンドは順調な右肩下がりです。現在のPFCを維持しましょう。", actualPace, status: "Green" };
-    if (thisPct < 0.15 && lastPct < 0.15) {
-      const wk = Math.min(consecutiveRed, 5);
-      const idx = wk < 1 ? 0 : wk < 2 ? 2 : Math.min(4 + (wk - 2), 5);
-      return { color: "red", msg: ADVICE_MSGS.red[idx], actualPace, status: "Red" };
-    }
-    const wk = Math.min(consecutiveYellow, 5);
-    const idx = wk < 1 ? 0 : wk < 2 ? 2 : Math.min(4 + (wk - 2), 5);
-    return { color: "yellow", msg: ADVICE_MSGS.yellow[idx], actualPace, status: "Yellow" };
-  };
-
-  const currentWeek = useMemo(() => getWeekData(weekOffset), [data, weekOffset]);
-  const lastWeek = useMemo(() => getWeekData(weekOffset - 1), [data, weekOffset]);
-  const wkD = currentWeek.data.length > 0 ? currentWeek.data : [{ date: fmtDS(currentWeek.start), weight: null, fat: null, hicarb: false }];
-  
-  const weekGoalLine = useMemo(() => computeGoalLine(wkD), [wkD, paceMode, customPace, customDirection, sdObj, SW, dailySlope]);
-  const weekIssnLine = useMemo(() => computeIssnLine(wkD), [wkD, sdObj, SW]);
-  const weekIssnUpper = useMemo(() => computeIssnUpper(wkD), [wkD, sdObj, SW]);
-  const weekIssnLower = useMemo(() => computeIssnLower(wkD), [wkD, sdObj, SW]);
-  
-  const advice = useMemo(() => getWeeklyAdvice(currentWeek.data, lastWeek.data), [currentWeek.data, lastWeek.data]);
-
-  const IB = { fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 500, color: "#1a1a1a", background: "#f8f8f6", border: "1px solid #e0e0de", borderRadius: 4, padding: "8px 12px", width: "100%", outline: "none" };
-  const BP = { fontFamily: "'DM Mono',monospace", background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: 600 };
-  const BS = { fontFamily: "'DM Mono',monospace", background: "#fff", color: "#3a3a3a", border: "1px solid #d0d0ce", borderRadius: 4, cursor: "pointer", fontWeight: 600 };
-  const TABS = [{ id: "dashboard", l: "DASH" }, { id: "calc", l: "CALC" }, { id: "supps", l: "SUPPS" }, { id: "advisor", l: "ADVISOR" }];
-
-  return (
-    <div style={{ maxWidth: 540, margin: "0 auto", minHeight: "100%", display: "flex", flexDirection: "column", background: "#f4f4f2" }}>
-      {/* HEADER */}
-      <header style={{ background: "#1a1a1a", padding: "18px 22px 14px", flexShrink: 0 }}>
-        <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: "#fff", letterSpacing: 2 }}>Diet Logic <span style={{ color: "#6a6a6a" }}>Pro</span></h1>
-        <p style={{ fontSize: 8, letterSpacing: 6, color: "#5a5a5a", marginTop: 4 }}>EVIDENCE — BASED BODY RECOMPOSITION</p>
-      </header>
-      
-      {/* TAB BAR */}
-      <nav className="safe-b" style={{ display: "flex", background: "#fff", borderBottom: "1px solid #e0e0de", position: "sticky", top: 0, zIndex: 100, flexShrink: 0 }}>
-        {TABS.map(t => (
-          <button key={t.id} className="nb" onClick={() => setTab(t.id)} style={{ flex: 1, padding: "14px 8px 12px", color: tab === t.id ? "#1a1a1a" : "#b0b0ae", fontWeight: tab === t.id ? 700 : 400, borderBottom: tab === t.id ? "2px solid #1a1a1a" : "2px solid transparent", transition: "all .15s" }}>
-            {t.l}
-          </button>
-        ))}
-      </nav>
-
-      {/* MAIN */}
-      <main style={{ flex: 1, padding: "20px 16px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-        
-        {/* ══════ DASHBOARD ══════ */}
-        {tab === "dashboard" && (
-          <div className="fu">
-            <Card style={{ marginBottom: 14 }}>
-              <SL>TODAY'S LOG</SL>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>体重 (kg)</p>
-                  <input type="text" inputMode="decimal" placeholder={W.toString()} value={tw} onChange={e => setTw(e.target.value.replace(/[^0-9.]/g, ""))} style={{ ...IB, fontSize: 20, fontWeight: 700, padding: "6px 10px" }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>体脂肪率 (%)</p>
-                  <input type="text" inputMode="decimal" placeholder={FP.toString()} value={tf} onChange={e => setTf(e.target.value.replace(/[^0-9.]/g, ""))} style={{ ...IB, fontSize: 20, fontWeight: 700, padding: "6px 10px" }} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <button onClick={() => setMCloth(true)} style={{ ...BS, fontSize: 9, letterSpacing: 2, padding: "8px 14px" }}>詳細</button>
-                  <button onClick={() => { if (!tw && !tf) return; const n = new Date(); const ds = `${n.getFullYear()}/${String(n.getMonth() + 1).padStart(2, "0")}/${String(n.getDate()).padStart(2, "0")}`; record(ds, tw, tf); setTw(""); setTf(""); }} style={{ ...BP, fontSize: 9, letterSpacing: 2, padding: "8px 14px", opacity: (tw || tf) ? 1 : 0.35 }}>記録</button>
-                </div>
-              </div>
-            </Card>
-
-            <Card style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <SL style={{ marginBottom: 0 }}>{chart === "weight" ? "WEIGHT TREND" : "BODY FAT TREND"}</SL>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button onClick={() => { setCalDate(""); setCalW(""); setCalF(""); setMCal(true); }} style={{ background: "none", border: "1px solid #e0e0de", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#3a3a3a" }}>📅</button>
-                  <button onClick={() => setChart(m => (m === "weight" ? "fat" : "weight"))} style={{ ...BS, fontSize: 9, letterSpacing: 2, padding: "5px 11px" }}>切換え</button>
-                </div>
-              </div>
-              <TrendChart chartId="dash" data={data} mode={chart} onClickDate={d => { if (d.weight === null && d.fat === null) return; setEditTgt({ ...d }); setMEdit(true); }} goalLine={chart === "weight" ? goalWeightsFull : null} issnLine={chart === "weight" ? issnWeightsFull : null} issnUpper={chart === "weight" ? issnUpperFull : null} issnLower={chart === "weight" ? issnLowerFull : null} showLines={chart === "weight"} showIssn={showIssnLine} />
-              <p style={{ fontSize: 9, color: "#bbb", marginTop: 8, textAlign: "right" }}>← スクロール可 ／ 記録日をタップで修正</p>
-            </Card>
-          </div>
-        )}
-
-        {/* ══════ CALC ══════ */}
-        {tab === "calc" && (
-          <div className="fu">
-            <Card style={{ marginBottom: 14 }}>
-              <SL>PROFILE</SL>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                {[{ l: "身長(cm)", k: "height" }, { l: "年齢", k: "age" }].map(f => (
-                  <div key={f.k}>
-                    <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>{f.l}</p>
-                    <input type="text" inputMode="numeric" value={prof[f.k]} onChange={e => setProf(p => ({ ...p, [f.k]: e.target.value.replace(/[^0-9]/g, "") }))} style={{ ...IB, fontWeight: 700 }} />
-                  </div>
-                ))}
-                <div>
-                  <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>性別</p>
-                  <select value={prof.sex} onChange={e => setProf(p => ({ ...p, sex: e.target.value }))} style={{ ...IB }}>
-                    <option value="male">男性</option>
-                    <option value="female">女性</option>
-                  </select>
-                </div>
-                <div>
-                  <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>目標</p>
-                  <select value={prof.goal} onChange={e => setProf(p => ({ ...p, goal: e.target.value }))} style={{ ...IB }}>
-                    <option value="cut">カット (−500)</option>
-                    <option value="maintain">維持</option>
-                    <option value="bulk">バルク (+300)</option>
-                    <option value="custom">任意入力</option>
-                  </select>
-                </div>
-                {prof.goal === "custom" && (
-                  <div style={{ gridColumn: "span 2" }}>
-                    <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>カロリー増減（kcal/day）</p>
-                    <input type="text" value={prof.goalCustom} placeholder="例: -300 or +200" onChange={e => setProf(p => ({ ...p, goalCustom: e.target.value }))} style={{ ...IB, fontWeight: 700 }} />
-                  </div>
-                )}
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>体重 (kg) <span style={{ fontSize: 9, color: "#aaa", fontWeight: 400 }}>— BMR計算に使用（未入力時は記録の最新値）</span></p>
-                <input type="text" inputMode="decimal" value={prof.weight} placeholder={String(W)} onChange={e => setProf(p => ({ ...p, weight: e.target.value.replace(/[^0-9.]/g, "") }))} style={{ ...IB, fontWeight: 700 }} />
-              </div>
-              <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 8 }}>活動量</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {Object.entries(ACT).map(([k, v]) => (
-                  <button key={k} onClick={() => setProf(p => ({ ...p, activity: k }))} style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: 2, padding: "6px 12px", borderRadius: 4, border: "2px solid", cursor: "pointer", fontWeight: 600, background: prof.activity === k ? "#1a1a1a" : "#fff", color: prof.activity === k ? "#fff" : "#2a2a2a", borderColor: prof.activity === k ? "#1a1a1a" : "#e0e0de" }}>{v.label}</button>
-                ))}
-              </div>
-            </Card>
-
-            <Card style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <SL style={{ marginBottom: 0 }}>STATUS</SL>
-                <button onClick={() => setMInfo(true)} style={{ ...BS, fontSize: 8, letterSpacing: 2, padding: "5px 12px" }}>INFO</button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, textAlign: "center" }}>
-                {[{ l: "体重", v: W + " kg" }, { l: "体脂肪", v: FP + "%" }, { l: "脂肪量", v: bodyFatKg + "kg" }, { l: "除脂肪", v: leanMass + "kg" }].map(s => (
-                  <div key={s.l}>
-                    <p style={{ fontSize: 8, color: "#aaa", marginBottom: 2 }}>{s.l}</p>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: "#2a2a2a" }}>{s.v}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+            // STATE
+            const [logs, setLogs] = useState(() => { const saved = loadLS(); return (saved && saved.logs) ? saved.logs : MOCK; });
+            const [profile, setProfile] = useState(() => {
+                const saved = loadLS();
+                return (saved && saved.profile) ? saved.profile : { gender: "male", height: 171, weight: 75, age: 27, activity: "moderate" };
+            });
+            const [pfcTarget, setPfcTarget] = useState(() => {
+                const saved = loadLS();
+                return (saved && saved.pfcTarget) ? saved.pfcTarget : { goal: "cut", pPct: 30, fPct: 25, custom: "0", calories: 2000, protein: 150, fat: 55, carbs: 225 };
+            });
+            const [meals, setMeals] = useState(() => { const saved = loadLS(); return (saved && saved.meals) ? saved.meals : EMPTY_MEALS; });
+            const [selDate, setSelDate] = useState(() => fmtDS(new Date()));
             
-            {/* CALCULATOR & REMAINING MACROS CODE (compacted for brevity but functionality preserved) */}
-            <Card style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <SL style={{ marginBottom: 0 }}>DAILY MACROS</SL>
-                <button onClick={() => setMacroView(v => v === "pct" ? "gram" : "pct")} style={{ ...BS, fontSize: 8, letterSpacing: 2, padding: "5px 12px" }}>{macroView === "pct" ? "g 入力" : "% 入力"}</button>
-              </div>
-              {macroView === "pct" ? (
-                <>
-                  <div style={{ marginBottom: 16 }}>
-                    <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 10 }}>PFCバランス（%）入力</p>
-                    {pfcErr && <p style={{ color: "#e63946", fontSize: 11, fontWeight: 600, marginBottom: 8 }}>合計が100%になるように入力して下さい。</p>}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-                      {[{ k: "p", l: "P %" }, { k: "f", l: "F %" }, { k: "c", l: "C %" }].map(x => (
-                        <div key={x.k}>
-                          <p style={{ fontSize: 9, color: "#6a6a6a", marginBottom: 4 }}>{x.l}</p>
-                          <input type="text" inputMode="decimal" value={pfcPct[x.k]} placeholder="—" onChange={e => setPfcPct(p => ({ ...p, [x.k]: e.target.value.replace(/[^0-9.]/g, "") }))} style={{ ...IB, fontSize: 13, fontWeight: 700, textAlign: "center" }} />
-                        </div>
-                      ))}
+            // Log Input Temporary State
+            const [inW, setInW] = useState("");
+            const [inF, setInF] = useState("");
+            const [inHi, setInHi] = useState(false);
+
+            // SAVE TRIGGER EFFECT
+            useEffect(() => { saveLS({ logs, profile, pfcTarget, meals }); }, [logs, profile, pfcTarget, meals]);
+
+            // AUTO PFC CALCULATOR EFFECT
+            useEffect(() => {
+                const bmr = calcBMR(profile.weight, profile.height, profile.age, profile.gender);
+                const tdee = calcTDEE(bmr, profile.activity);
+                const pfc = calcPFC(tdee, pfcTarget.goal, profile.weight * 0.85, pfcTarget.pPct, pfcTarget.fPct, pfcTarget.custom);
+                setPfcTarget(prev => ({ ...prev, ...pfc }));
+            }, [profile, pfcTarget.goal, pfcTarget.pPct, pfcTarget.fPct, pfcTarget.custom]);
+
+            // LOAD SELECTED DAY DATA EFFECT
+            useEffect(() => {
+                const found = logs.find(l => l.date === selDate);
+                if (found) { setInW(found.weight !== null ? String(found.weight) : ""); setInF(found.fat !== null ? String(found.fat) : ""); setInHi(!!found.hicarb); }
+                else { setInW(""); setInF(""); setInHi(false); }
+            }, [selDate, logs]);
+
+            // HANDLERS
+            const saveLogDay = () => {
+                const wNum = inW.trim() === "" ? null : parseFloat(inW);
+                const fNum = inF.trim() === "" ? null : parseFloat(inF);
+                const idx = logs.findIndex(l => l.date === selDate);
+                let newLogs = [...logs];
+                if (idx > -1) {
+                    if (wNum === null && fNum === null && !inHi) { newLogs.splice(idx, 1); }
+                    else { newLogs[idx] = { ...newLogs[idx], weight: wNum, fat: fNum, hicarb: inHi }; }
+                } else if (wNum !== null || fNum !== null || inHi) {
+                    newLogs.push({ date: selDate, weight: wNum, fat: fNum, hicarb: inHi });
+                }
+                newLogs.sort((a, b) => a.date.localeCompare(b.date));
+                setLogs(newLogs);
+            };
+
+            const changeMealRow = (idx, field, val) => {
+                const updated = [...meals];
+                updated[idx][field] = val;
+                setMeals(updated);
+            };
+
+            // ANALYSIS CALCULATIONS
+            const computedAnalysis = useMemo(() => {
+                if (logs.length < 2) return { status: "grey", text: "十分なログデータがありません（2点以上の記録が必要です）。" };
+                const validW = logs.filter(l => l.weight !== null);
+                if (validW.length < 2) return { status: "grey", text: "体重のデータが2点以上必要です。" };
+                
+                const oldest = validW[0];
+                const latest = validW[validW.length - 1];
+                const days = daysBtwn(parseDate(oldest.date), parseDate(latest.date));
+                if (days <= 0) return { status: "grey", text: "期間計算にエラーが発生しました。" };
+
+                const diff = latest.weight - oldest.weight;
+                const wkPace = (diff / days) * 7;
+                const pctWk = (wkPace / oldest.weight) * 100;
+
+                if (pfcTarget.goal === "cut") {
+                    if (pctWk <= -1.0) return { status: "purple", text: ADVICE_MSGS.purple[0], val: wkPace, pct: pctWk };
+                    if (pctWk > -1.0 && pctWk <= -0.5) return { status: "green", text: ADVICE_MSGS.green[0], val: wkPace, pct: pctWk };
+                    if (pctWk > -0.5 && pctWk < -0.1) return { status: "red", text: ADVICE_MSGS.red[0], val: wkPace, pct: pctWk };
+                    return { status: "yellow", text: ADVICE_MSGS.yellow[0], val: wkPace, pct: pctWk };
+                } else if (pfcTarget.goal === "bulk") {
+                    if (pctWk >= 0.5) return { status: "purple", text: "増量ペースが非常に急です。脂肪蓄積のリスクが高いため調整を推奨します。", val: wkPace, pct: pctWk };
+                    if (pctWk >= 0.1 && pctWk < 0.5) return { status: "green", text: "理想的なリーンバルクの増量ペースです。クリーンな食事を維持しましょう。", val: wkPace, pct: pctWk };
+                    return { status: "yellow", text: "増量ペースが停滞傾向にあります。全体的な摂取カロリーの底上げが必要です。", val: wkPace, pct: pctWk };
+                }
+                return { status: "green", text: "現在の体重維持状態は安定しています。", val: wkPace, pct: pctWk };
+            }, [logs, pfcTarget.goal]);
+
+            const sumMeals = useMemo(() => {
+                return meals.reduce((acc, cur) => {
+                    const p = parseFloat(cur.p) || 0;
+                    const f = parseFloat(cur.f) || 0;
+                    const c = parseFloat(cur.c) || 0;
+                    return { p: acc.p + p, f: acc.f + f, c: acc.c + c, cal: acc.cal + (p * 4) + (f * 9) + (c * 4) };
+                }, { p: 0, f: 0, c: 0, cal: 0 });
+            }, [meals]);
+
+            const bmrVal = Math.round(calcBMR(profile.weight, profile.height, profile.age, profile.gender));
+            const tdeeVal = Math.round(calcTDEE(bmrVal, profile.activity));
+
+            // GRAPH COMPONENT HELPER VALUES
+            const latestW = logs.filter(l => l.weight !== null).pop()?.weight || profile.weight;
+            const latestF = logs.filter(l => l.fat !== null).pop()?.fat || 20;
+            const goalLine = { weight: latestW * 0.98, fat: latestF * 0.95 };
+            const issnUpper = { weight: latestW * 0.995, fat: latestF * 0.99 };
+            const issnLower = { weight: latestW * 0.99, fat: latestF * 0.98 };
+
+            return (
+                <div style={{ maxWidth: 800, margin: "0 auto", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+                    
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid #1a1a1a", paddingBottom: 6 }}>
+                        <h1 style={{ fontSize: 16, fontFamily: "Playfair Display", fontWeight: "700", letterSpacing: 1 }}>DIET MASTER PRO</h1>
+                        <span style={{ fontSize: 8, color: "#666" }}>v2.1.0 // ENGINE ACTIVE</span>
                     </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                    <MacroRing protein={aPFC.protein} fat={aPFC.fat} carbs={aPFC.carbs} />
-                    <div style={{ flex: 1 }}>
-                      {[{ l: "PROTEIN", v: aPFC.protein + "g", sub: pfcBalance.p + "%", c: "#1a1a1a" }, { l: "FAT", v: aPFC.fat + "g", sub: pfcBalance.f + "%", c: "#6a6a6a" }, { l: "CARBS", v: aPFC.carbs + "g", sub: pfcBalance.c + "%", c: "#b8b8b6" }].map(m => (
-                        <div key={m.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: m.c }} /><span style={{ fontSize: 9, letterSpacing: 3, color: "#5a5a5a", fontWeight: 600 }}>{m.l}</span></div>
-                          <div style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>{m.v}</span><span style={{ fontSize: 10, color: "#8a8a8a", marginLeft: 6 }}>{m.sub}</span></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600 }}>PFCバランス（g）入力</p>
-                      <button onClick={() => setGramTargetMode(v => !v)} style={{ ...BS, fontSize: 7, letterSpacing: 1, padding: "4px 8px", background: gramTargetMode ? "#1a1a1a" : "#fff", color: gramTargetMode ? "#fff" : "#3a3a3a" }}>{gramTargetMode ? "目標CAL対比" : "PFC内比率"}</button>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-                      {[{ k: "p", l: "P (g)" }, { k: "f", l: "F (g)" }, { k: "c", l: "C (g)" }].map(x => (
-                        <div key={x.k}>
-                          <p style={{ fontSize: 9, color: "#6a6a6a", marginBottom: 4 }}>{x.l}</p>
-                          <input type="text" inputMode="decimal" value={pfcGram[x.k]} placeholder="0" onChange={e => setPfcGram(p => ({ ...p, [x.k]: e.target.value.replace(/[^0-9.]/g, "") }))} style={{ ...IB, fontSize: 13, fontWeight: 700, textAlign: "center" }} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {(() => {
-                    const usePct = gramTargetMode ? gramTargetPct : gramPct;
-                    const items = [{ l: "PROTEIN", v: usePct.p + "%", sub: gP + "g", c: "#1a1a1a", raw: parseFloat(usePct.p) }, { l: "FAT", v: usePct.f + "%", sub: gF + "g", c: "#6a6a6a", raw: parseFloat(usePct.f) }, { l: "CARBS", v: usePct.c + "%", sub: gC + "g", c: "#b8b8b6", raw: parseFloat(usePct.c) }];
-                    return (
-                      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                        <MacroRing protein={gP} fat={gF} carbs={gC} />
-                        <div style={{ flex: 1 }}>
-                          {items.map(m => (
-                            <div key={m.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: m.c }} /><span style={{ fontSize: 9, letterSpacing: 3, color: "#5a5a5a", fontWeight: 600 }}>{m.l}</span></div>
-                              <div style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 700, color: gramTargetMode ? (m.raw > 100 ? "#e63946" : "#1a1a1a") : "#1a1a1a" }}>{m.v}</span><span style={{ fontSize: 10, color: "#8a8a8a", marginLeft: 6 }}>{m.sub}</span></div>
+
+                    {/* Section 1: Dashboard Profiles & PFC Target Setup */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+                        
+                        {/* Profile Parameters */}
+                        <div style={{ background: "#fff", border: "1px solid #1a1a1a", padding: 12 }}>
+                            <h2 style={{ fontSize: 10, fontWeight: "bold", borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 8 }}>BODY METRICS</h2>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 10 }}>
+                                <label>性別:
+                                    <select value={profile.gender} onChange={e => setProfile({...profile, gender: e.target.value})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }}>
+                                        <option value="male">男性</option>
+                                        <option value="female">女性</option>
+                                    </select>
+                                </label>
+                                <label>身長 (cm):
+                                    <input type="number" value={profile.height} onChange={e => setProfile({...profile, height: parseFloat(e.target.value) || 0})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
+                                <label>基準体重 (kg):
+                                    <input type="number" value={profile.weight} onChange={e => setProfile({...profile, weight: parseFloat(e.target.value) || 0})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
+                                <label>年齢:
+                                    <input type="number" value={profile.age} onChange={e => setProfile({...profile, age: parseInt(e.target.value) || 0})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
                             </div>
-                          ))}
-                          <div style={{ borderTop: "1px solid #ebebea", paddingTop: 8, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                              {gTotal > 0 && gramTargetMode ? (
-                                <span style={{ fontSize: 10, color: gramTargetSum <= 100.1 ? "#2a9d8f" : "#e63946", fontWeight: 600 }}>目標対比 {gramTargetSum.toFixed(1)}%<span style={{ fontSize: 8, color: "#8a8a8a", marginLeft: 4 }}>/ {tgtCal} kcal</span></span>
-                              ) : (() => { const s = parseFloat(gramPct.p) + parseFloat(gramPct.f) + parseFloat(gramPct.c); return gTotal > 0 ? (<span style={{ fontSize: 10, color: s <= 100.1 ? "#2a9d8f" : "#e63946", fontWeight: 600 }}>合計 {s.toFixed(1)}%</span>) : null; })()}
+                            <label style={{ display: "block", fontSize: 10, marginTop: 8 }}>活動レベル:
+                                <select value={profile.activity} onChange={e => setProfile({...profile, activity: e.target.value})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }}>
+                                    {Object.keys(ACT).map(k => <option key={k} value={k}>{ACT[k].label} (x{ACT[k].factor})</option>)}
+                                </select>
+                            </label>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 9, background: "#f9f9f9", padding: 4, borderLeft: "2px solid #1a1a1a" }}>
+                                <span>BMR: <strong>{bmrVal} kcal</strong></span>
+                                <span>TDEE: <strong>{tdeeVal} kcal</strong></span>
                             </div>
-                            <div><span style={{ fontSize: 11, fontWeight: 700, color: "#1a1a1a" }}>{Math.round(gTotal)}</span><span style={{ fontSize: 9, color: "#8a8a8a", marginLeft: 4 }}>kcal</span></div>
-                          </div>
                         </div>
-                      </div>
-                    );
-                  })()}
-                </>
-              )}
-            </Card>
 
-            <Card style={{ marginBottom: 14 }}>
-              <SL>CALCULATION MODE</SL>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 16 }}>
-                {[{ id: "auto", l: "AUTO", s: "ISSN/NSCA" }, { id: "manual", l: "MANUAL", s: "全手入力" }, { id: "semi", l: "SEMI", s: "微調整" }].map(m => (
-                  <div key={m.id} onClick={() => setCalcMode(m.id)} style={{ border: `2px solid ${calcMode === m.id ? "#1a1a1a" : "#e0e0de"}`, background: calcMode === m.id ? "#1a1a1a" : "#fff", borderRadius: 5, padding: "14px 10px", textAlign: "center", cursor: "pointer" }}>
-                    <p style={{ fontSize: 10, letterSpacing: 3, fontWeight: 700, color: calcMode === m.id ? "#fff" : "#2a2a2a" }}>{m.l}</p>
-                    <p style={{ fontSize: 9, color: calcMode === m.id ? "#aaa" : "#8a8a8a", marginTop: 4 }}>{m.s}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+                        {/* PFC Target Logic Parameters */}
+                        <div style={{ background: "#fff", border: "1px solid #1a1a1a", padding: 12 }}>
+                            <h2 style={{ fontSize: 10, fontWeight: "bold", borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 8 }}>PFC TARGET SPEC</h2>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 10 }}>
+                                <label>ボディゴール:
+                                    <select value={pfcTarget.goal} onChange={e => setPfcTarget({...pfcTarget, goal: e.target.value})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }}>
+                                        <option value="cut">減量 (-500 kcal)</option>
+                                        <option value="maintain">維持 (±0 kcal)</option>
+                                        <option value="bulk">増量 (+300 kcal)</option>
+                                        <option value="custom">カスタム調整</option>
+                                    </select>
+                                </label>
+                                {pfcTarget.goal === "custom" && (
+                                    <label>オフセット(kcal):
+                                        <input type="text" value={pfcTarget.custom} onChange={e => setPfcTarget({...pfcTarget, custom: e.target.value})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                    </label>
+                                )}
+                                <label>Pタンパク質 (%):
+                                    <input type="number" value={pfcTarget.pPct} onChange={e => setPfcTarget({...pfcTarget, pPct: parseInt(e.target.value) || 0})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
+                                <label>F脂質 (%):
+                                    <input type="number" value={pfcTarget.fPct} onChange={e => setPfcTarget({...pfcTarget, fPct: parseInt(e.target.value) || 0})} style={{ width: "100%", padding: 2, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
+                            </div>
+                            <div style={{ marginTop: 10, padding: 6, border: "1px dashed #1a1a1a", backgroundColor: "#fafafa" }}>
+                                <div style={{ fontSize: 9, fontWeight: "bold", color: "#444", marginBottom: 2 }}>算出ターゲット：</div>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, textAlign: "center", fontSize: 10 }}>
+                                    <div style={{ background: "#1a1a1a", color: "#fff", padding: 2 }}>{pfcTarget.calories}<span>kcal</span></div>
+                                    <div style={{ background: "#eee", padding: 2 }}>P:{pfcTarget.protein}g</div>
+                                    <div style={{ background: "#eee", padding: 2 }}>F:{pfcTarget.fat}g</div>
+                                    <div style={{ background: "#eee", padding: 2 }}>C:{pfcTarget.carbs}g</div>
+                                </div>
+                            </div>
+                        </div>
 
-            {calcMode === "auto" && (
-              <Card>
-                <SL>AUTO MODE</SL>
-                <div style={{ marginBottom: 14, padding: "14px", background: "#f8f8f6", borderRadius: 6, border: "1px solid #e8e8e6" }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>毎食（目安）</p>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-                    {[{ k: "p", l: "P (g)", v: mealTarget.protein }, { k: "f", l: "F (g)", v: mealTarget.fat }, { k: "c", l: "C (g)", v: mealTarget.carbs }].map(m => (
-                      <div key={m.k}>
-                        <p style={{ fontSize: 9, color: "#6a6a6a", marginBottom: 4 }}>{m.l}</p>
-                        <div style={{ ...IB, fontSize: 14, fontWeight: 700, textAlign: "center", background: "#ebebea", color: "#6a6a6a", cursor: "default" }}>{m.v}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ padding: "14px", background: "#1a1a1a", borderRadius: 6 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 10 }}>一日分</p>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
-                    {[{ l: "P", v: aFC.protein, u: "g" }, { l: "F", v: aFC.fat, u: "g" }, { l: "C", v: aFC.carbs, u: "g" }, { l: "CAL", v: aFC.calories, u: "kcal" }].map(x => (
-                      <div key={x.l} style={{ textAlign: "center" }}>
-                        <p style={{ fontSize: 8, color: "#7a7a7a", marginBottom: 4 }}>{x.l}</p>
-                        <p style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{x.v}</p>
-                        <p style={{ fontSize: 8, color: "#6a6a6a" }}>{x.u}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 12, borderTop: "1px solid #3a3a3a", paddingTop: 10 }}>
-                    <p style={{ fontSize: 10, color: aFC.calories > tdee ? "#ff6b6b" : "#6bcf7f", fontWeight: 600, textAlign: "center" }}>
-                      TDEE差分: {aFC.calories > tdee ? "+" : ""}{(aFC.calories - tdee).toFixed(0)} kcal
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
-            
-            {/* MANUAL & SEMI modes are maintained precisely but truncated in this display for brevity. 
-                They function identically with the new useMemo optimizations applied to their upstream variables. */}
-            
-            {/* ══════ INFO MODALS (Unchanged functionality, better performance) ══════ */}
-          </div>
-        )}
+                    </div>
 
-        {tab === "supps" && (
-           <div className="fu">
-             {/* Supps UI maintained as original */}
-             <Card style={{ marginBottom: 12 }}>
-               <SL>SUPPLEMENT SCHEDULE</SL>
-               {/* 展開部分は同一 */}
-               <p style={{fontSize:9, color:"#7a7a7a"}}>※元のSUPPS UIが展開されます。</p>
-             </Card>
-           </div>
-        )}
+                    {/* Section 2: Metrics Trend Charts View */}
+                    <TrendChart data={logs} mode="weight" onClickDate={setSelDate} goalLine={goalLine} issnUpper={issnUpper} issnLower={issnLower} showLines={pfcTarget.goal === "cut"} />
+                    <TrendChart data={logs} mode="fat" onClickDate={setSelDate} goalLine={goalLine} issnUpper={issnUpper} issnLower={issnLower} showLines={pfcTarget.goal === "cut"} />
 
-        {tab === "advisor" && (
-          <div className="fu">
-            <Card style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <SL style={{ marginBottom: 0 }}>目標到達日 逆引き計算</SL>
-                <button onClick={() => setMAdvisorInfo(true)} style={{ width: 22, height: 22, borderRadius: "50%", border: "1px solid #ccc", background: "#f8f8f6", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#7a7a7a", fontFamily: "serif", display: "flex", alignItems: "center", justifyContent: "center" }}>i</button>
-              </div>
-              <p style={{ fontSize: 9, color: "#7a7a7a", marginBottom: 14, lineHeight: 1.7 }}>1kgの脂肪燃焼に7200kcalの計算式をもとに、入力カロリーから目標到達日を算出します。</p>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-                <button onClick={() => setAdvisorCalDir("cut")} style={{ ...BS, fontSize: 10, letterSpacing: 2, padding: "10px", background: advisorCalDir === "cut" ? "#1a1a1a" : "#fff", color: advisorCalDir === "cut" ? "#fff" : "#3a3a3a", borderColor: advisorCalDir === "cut" ? "#1a1a1a" : "#d0d0ce" }}>減量</button>
-                <button onClick={() => setAdvisorCalDir("bulk")} style={{ ...BS, fontSize: 10, letterSpacing: 2, padding: "10px", background: advisorCalDir === "bulk" ? "#1a1a1a" : "#fff", color: advisorCalDir === "bulk" ? "#fff" : "#3a3a3a", borderColor: advisorCalDir === "bulk" ? "#1a1a1a" : "#d0d0ce" }}>増量</button>
-              </div>
-              
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>START DATE</p>
-                <input type="date" value={advisorCalStart} onChange={e => setAdvisorCalStart(e.target.value)} style={{ ...IB, fontSize: 12 }} />
-              </div>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                <div>
-                  <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>START WEIGHT (kg)</p>
-                  <input type="text" inputMode="decimal" value={advisorCalSW} placeholder="0.0" onChange={e => setAdvisorCalSW(e.target.value.replace(/[^0-9.]/g, ""))} style={{ ...IB, fontWeight: 700 }} />
-                </div>
-                <div>
-                  <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>GOAL WEIGHT (kg)</p>
-                  <input type="text" inputMode="decimal" value={advisorCalGW} placeholder="0.0" onChange={e => setAdvisorCalGW(e.target.value.replace(/[^0-9.]/g, ""))} style={{ ...IB, fontWeight: 700 }} />
-                </div>
-              </div>
-              
-              {advisorCalWarning && <p style={{ fontSize: 10, fontWeight: 600, color: advisorCalWarning.color, marginBottom: 8, lineHeight: 1.6 }}>{advisorCalWarning.msg}</p>}
-              
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 10, color: "#5a5a5a", fontWeight: 600, marginBottom: 6 }}>{advisorCalDir === "cut" ? "1日のカロリー赤字 (kcal)" : "1日のカロリー追加 (kcal)"}<span style={{ fontSize: 9, color: "#aaa", fontWeight: 400, marginLeft: 6 }}>— 値を入力（例: 300）</span></p>
-                <input type="text" inputMode="decimal" value={advisorCalKcal} placeholder={advisorCalDir === "cut" ? "500" : "300"} onChange={e => setAdvisorCalKcal(e.target.value.replace(/[^0-9.]/g, ""))} style={{ ...IB, fontWeight: 700 }} />
-              </div>
-              
-              {advisorDeficitStatus && (
-                <div style={{ background: "#f8f8f6", borderLeft: `4px solid ${advisorDeficitStatus.borderColor}`, borderRadius: "0 6px 6px 0", padding: "12px 14px", marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: advisorDeficitStatus.color, marginBottom: 6 }}>{advisorDeficitStatus.dot} {advisorDeficitStatus.label}</p>
-                  {advisorDeficitStatus.msg.split("\n").map((line, i) => (
-                    <p key={i} style={{ fontSize: 10, color: "#2a2a2a", lineHeight: 1.7, marginTop: i === 0 ? 0 : 4 }}>{line}</p>
-                  ))}
-                </div>
-              )}
-              
-              {advisorArrivalDate && (
-                <div style={{ background: "#f0f0ee", borderRadius: 6, padding: "12px 14px", border: "1px solid #e0e0de" }}>
-                  <p style={{ fontSize: 9, color: "#7a7a7a", marginBottom: 4 }}>目標到達予想日</p>
-                  <p style={{ fontSize: 16, fontWeight: 700, color: "#2a9d8f" }}>{advisorArrivalDate.getFullYear()}年{advisorArrivalDate.getMonth() + 1}月{advisorArrivalDate.getDate()}日頃</p>
-                </div>
-              )}
-            </Card>
-            
-            <Card style={{ marginBottom: 14 }}>
-              <SL>TREND ANALYSIS</SL>
-              <TrendChart chartId="advisor" data={wkD} mode={chart} goalLine={chart === "weight" ? weekGoalLine : null} issnLine={chart === "weight" ? weekIssnLine : null} issnUpper={chart === "weight" ? weekIssnUpper : null} issnLower={chart === "weight" ? weekIssnLower : null} showLines={chart === "weight"} showIssn={showIssnLine} />
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0", borderTop: "1px solid #ebebea" }}>
-                <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...BS, fontSize: 14, padding: "6px 14px", lineHeight: 1 }}>‹</button>
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#1a1a1a" }}>{fmtDS(currentWeek.start)} — {fmtDS(currentWeek.end)}</p>
-                  <p style={{ fontSize: 8, color: "#8a8a8a", letterSpacing: 2, marginTop: 2 }}>{weekOffset === 0 ? "今週" : weekOffset === -1 ? "先週" : `${Math.abs(weekOffset)}週前`}</p>
-                </div>
-                <button onClick={() => { if (weekOffset < 0) setWeekOffset(o => o + 1); }} disabled={weekOffset >= 0} style={{ ...BS, fontSize: 14, padding: "6px 14px", lineHeight: 1, opacity: weekOffset >= 0 ? 0.3 : 1, cursor: weekOffset >= 0 ? "not-allowed" : "pointer" }}>›</button>
-              </div>
-            </Card>
-            
-            {advice.status !== "unknown" && (
-              <Card style={{ marginBottom: 14 }}>
-                <SL>RECOMMENDATIONS</SL>
-                <div style={{ background: "#f8f8f6", borderLeft: `3px solid ${advice.status === "Green" ? "#2a9d8f" : advice.status === "Yellow" ? "#f4a261" : advice.status === "Purple" ? "#9b59b6" : "#e63946"}`, borderRadius: "0 4px 4px 0", padding: "14px 16px" }}>
-                  <p style={{ fontSize: 12, color: "#2a2a2a", lineHeight: 1.8, fontWeight: 500 }}>{advice.msg}</p>
-                </div>
-                {advice.actualPace !== null && (
-                  <p style={{ fontSize: 9, color: "#8a8a8a", marginTop: 10 }}>実測ペース: <strong style={{ color: "#1a1a1a" }}>{advice.actualPace.toFixed(3)} kg/週</strong></p>
-                )}
-              </Card>
-            )}
-          </div>
-        )}
-      </main>
+                    {/* Section 3: Metric Logger & AI Insight Panel */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+                        
+                        {/* Daily Log Recorder */}
+                        <div style={{ background: "#fff", border: "1px solid #1a1a1a", padding: 12 }}>
+                            <h2 style={{ fontSize: 10, fontWeight: "bold", borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 8 }}>DAILY ENTRY LOGGER</h2>
+                            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                                <input type="date" value={selDate.replace(/\//g, "-")} onChange={e => setSelDate(e.target.value.replace(/-/g, "/"))} style={{ padding: 3, border: "1px solid #1a1a1a", fontSize: 10, fontFamily: "DM Mono" }} />
+                                <label style={{ display: "flex", alignItems: "center", fontSize: 9, cursor: "pointer", userSelect: "none" }}>
+                                    <input type="checkbox" checked={inHi} onChange={e => setInHi(e.target.checked)} style={{ marginRight: 3 }} /> ハイカーボ
+                                </label>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                                <label style={{ fontSize: 9 }}>体重 (kg):
+                                    <input type="number" step="0.1" value={inW} onChange={e => setInW(e.target.value)} placeholder="空欄で削除" style={{ width: "100%", padding: 3, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
+                                <label style={{ fontSize: 9 }}>体脂肪率 (%):
+                                    <input type="number" step="0.1" value={inF} onChange={e => setInF(e.target.value)} placeholder="空欄で削除" style={{ width: "100%", padding: 3, border: "1px solid #ccc", marginTop: 2, fontSize: 9 }} />
+                                </label>
+                            </div>
+                            <button onClick={saveLogDay} style={{ width: "100%", background: "#1a1a1a", color: "#fff", padding: 6, border: "none", cursor: "pointer", fontSize: 9, letterSpacing: 1, fontWeight: "bold" }}>記録を保存</button>
+                        </div>
 
-      {/* MODALS (Unchanged functionality, condensed for formatting space) */}
-      {mInfo && (
-        <Modal onClose={() => setMInfo(false)}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>詳細パラメーター</p>
-              <p style={{ fontSize: 10, color: "#7a7a7a", marginTop: 3 }}>Mifflin-St Jeor 式に基づく計算値</p>
-            </div>
-            <button onClick={() => setMInfo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#5a5a5a", lineHeight: 1 }}>✕</button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-            {[{ l: "BMR", v: Math.round(bmr) + " kcal", d: "基礎代謝量" }, { l: "TDEE", v: Math.round(tdee) + " kcal", d: "活動代謝量" }, { l: "BMI", v: calcBMI(profWeight, heightNum).toFixed(1), d: "体格指数" }].map(s => (
-              <div key={s.l} style={{ background: "#f8f8f6", borderRadius: 6, padding: "14px 10px", textAlign: "center" }}>
-                <p style={{ fontSize: 8, letterSpacing: 3, color: "#8a8a8a", marginBottom: 6 }}>{s.l}</p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>{s.v}</p>
-                <p style={{ fontSize: 9, color: "#7a7a7a", marginTop: 4 }}>{s.d}</p>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => setMInfo(false)} style={{ ...BP, width: "100%", padding: "11px", fontSize: 10, letterSpacing: 3, marginTop: 8 }}>CLOSE</button>
-        </Modal>
-      )}
-      {/* Other Modals (mCloth, mEdit, mCal, mMealSet, etc.) stay fully functional as per original */}
-    </div>
-  );
-}
+                        {/* Analysis Feedback Engine */}
+                        <div style={{ background: "#fff", border: "1px solid #1a1a1a", padding: 12, display: "flex", flexDirection: "column" }}>
+                            <h2 style={{ fontSize: 10, fontWeight: "bold", borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 6 }}>AI ENGINE ANALYTICS</h2>
+                            <div style={{ fontSize: 9, marginBottom: 6, display: "flex", justifyContent: "space-between", background: "#f0f0f0", padding: 4 }}>
+                                <span>週換算ペース: <strong>{computedAnalysis.val !== undefined ? `${computedAnalysis.val > 0 ? "+" : ""}${computedAnalysis.val.toFixed(2)} kg/週` : "N/A"}</strong></span>
+                                <span>比率: <strong>{computedAnalysis.pct !== undefined ? `${computedAnalysis.pct > 0 ? "+" : ""}${computedAnalysis.pct.toFixed(2)} %` : "N/A"}</strong></span>
+                            </div>
+                            <div style={{
+                                flex: 1, fontSize: 9, padding: 8, borderLeft: "3px solid",
+                                borderColor: computedAnalysis.status === "green" ? "#28a745" : computedAnalysis.status === "yellow" ? "#ffc107" : computedAnalysis.status === "red" ? "#dc3545" : computedAnalysis.status === "purple" ? "#6f42c1" : "#6c757d",
+                                backgroundColor: computedAnalysis.status === "green" ? "#f4faf5" : computedAnalysis.status === "yellow" ? "#fffdf5" : computedAnalysis.status === "red" ? "#fdf5f6" : computedAnalysis.status === "purple" ? "#f9f6fc" : "#fafafa",
+                                lineHeight: "1.4", overflowY: "auto"
+                            }}>
+                                {computedAnalysis.text}
+                            </div>
+                        </div>
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
+                    </div>
+
+                    {/* Section 4: Daily Meal Macro Tracking Sheet */}
+                    <div style={{ background: "#fff", border: "1px solid #1a1a1a", padding: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 8 }}>
+                            <h2 style={{ fontSize: 10, fontWeight: "bold" }}>INTAKE MACRO TRACKING SHEET</h2>
+                            <span style={{ fontSize: 8, color: "#666" }}>SELECTED DAY REALTIME EVALUATION</span>
+                        </div>
+                        <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 9, minWidth: 460 }}>
+                                <thead>
+                                    <tr style={{ background: "#1a1a1a", color: "#fff", textAlign: "left" }}>
+                                        <th style={{ padding: 4, fontSize: 8 }}>MEAL TIMING</th>
+                                        <th style={{ padding: 4, fontSize: 8 }}>DESCRIPTION</th>
+                                        <th style={{ padding: 4, fontSize: 8, width: 45 }}>P (g)</th>
+                                        <th style={{ padding: 4, fontSize: 8, width: 45 }}>F (g)</th>
+                                        <th style={{ padding: 4, fontSize: 8, width: 45 }}>C (g)</th>
+                                        <th style={{ padding: 4, fontSize: 8, width: 50, textAlign: "right" }}>KCAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {meals.map((m, i) => {
+                                        const pVal = parseFloat(m.p) || 0;
+                                        const fVal = parseFloat(m.f) || 0;
+                                        const cVal = parseFloat(m.c) || 0;
+                                        const rCal = (pVal * 4) + (fVal * 9) + (cVal * 4);
+                                        return (
+                                            <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
+                                                <td style={{ padding: "4px 2px", fontWeight: "bold", color: "#333", fontSize: 8 }}>
+                                                    {m.editable ? (
+                                                        <input type="text" value={m.label} onChange={e => changeMealRow(i, "label", e.target.value)} style={{ width: "100%", border: "none", background: "#fdfdfd", fontSize: 8, fontWeight: "bold" }} />
+                                                    ) : (
+                                                        <span>{m.label} <span style={{ color: "#aaa", fontSize: 7, fontWeight: "normal" }}>{m.labelEn}</span></span>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: 2 }}>
+                                                    <input type="text" value={m.desc} onChange={e => changeMealRow(i, "desc", e.target.value)} placeholder="..." style={{ width: "100%", border: "none", padding: 2, background: "transparent" }} />
+                                                </td>
+                                                <td style={{ padding: 2 }}>
+                                                    <input type="number" value={m.p} onChange={e => changeMealRow(i, "p", e.target.value)} style={{ width: "100%", padding: 2, border: "1px solid #eee", fontSize: 8 }} />
+                                                </td>
+                                                <td style={{ padding: 2 }}>
+                                                    <input type="number" value={m.f} onChange={e => changeMealRow(i, "f", e.target.value)} style={{ width: "100%", padding: 2, border: "1px solid #eee", fontSize: 8 }} />
+                                                </td>
+                                                <td style={{ padding: 2 }}>
+                                                    <input type="number" value={m.c} onChange={e => changeMealRow(i, "c", e.target.value)} style={{ width: "100%", padding: 2, border: "1px solid #eee", fontSize: 8 }} />
+                                                </td>
+                                                <td style={{ padding: 4, textAlign: "right", fontFamily: "DM Mono", fontWeight: "500" }}>{rCal > 0 ? rCal : "-"}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                    <tr style={{ background: "#fafafa", fontWeight: "bold", borderTop: "1px solid #1a1a1a" }}>
+                                        <td colSpan="2" style={{ padding: 6, fontSize: 8 }}>CURRENT TOTAL / DIFF</td>
+                                        <td style={{ padding: 4, color: sumMeals.p > pfcTarget.protein ? "#dc3545" : "#1a1a1a" }}>{sumMeals.p} <div style={{ fontSize: 7, fontWeight: "normal", color: "#666" }}>/{pfcTarget.protein}</div></td>
+                                        <td style={{ padding: 4, color: sumMeals.f > pfcTarget.fat ? "#dc3545" : "#1a1a1a" }}>{sumMeals.f} <div style={{ fontSize: 7, fontWeight: "normal", color: "#666" }}>/{pfcTarget.fat}</div></td>
+                                        <td style={{ padding: 4, color: sumMeals.c > pfcTarget.carbs ? "#dc3545" : "#1a1a1a" }}>{sumMeals.c} <div style={{ fontSize: 7, fontWeight: "normal", color: "#666" }}>/{pfcTarget.carbs}</div></td>
+                                        <td style={{ padding: 6, textAlign: "right", fontFamily: "DM Mono", color: sumMeals.cal > pfcTarget.calories ? "#dc3545" : "#1a1a1a" }}>{sumMeals.cal} <div style={{ fontSize: 7, fontWeight: "normal", color: "#666" }}>/{pfcTarget.calories}</div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            );
+        }
+
+        // React アプリケーションのレンダリング起動
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
